@@ -1,0 +1,1150 @@
+
+import Phaser from 'phaser';
+import { 
+  WORLD_SIZE, INITIAL_PLAYER, ABILITIES_BASE, MAGIC_COLORS, 
+  ENEMY_TEMPLATES, BOSS_TEMPLATES, GAME_BALANCE, LOOT_CONFIG,
+  ELITE_AFFIXES, STATUS_EFFECTS, ELEMENTAL_REACTIONS
+} from '../constants';
+
+export class PlayerManager {
+  scene: Phaser.Scene;
+  sprite: any;
+  stats: any;
+  cursors: any;
+  wasd: any;
+  shiftKey: any;
+  spaceKey: any;
+
+  // Dash state
+  isDashing: boolean = false;
+  dashLastUsed: number = 0;
+  dashDir: { x: number, y: number } = { x: 0, y: 1 };
+  lastMoveDir: { x: number, y: number } = { x: 0, y: 1 };
+
+  constructor(scene) {
+    this.scene = scene;
+  }
+
+  create(spriteKey) {
+    this.sprite = this.scene.physics.add.sprite(WORLD_SIZE/2, WORLD_SIZE/2, spriteKey);
+    this.sprite.setScale(0.12).setDepth(100);
+    const radius = 100; 
+    this.sprite.setCircle(radius, (this.sprite.width / 2) - radius, (this.sprite.height / 2) - radius);
+    this.sprite.setCollideWorldBounds(true);
+    this.sprite.body.setDrag(0);
+
+    this.stats = {
+      ...INITIAL_PLAYER,
+      id: 'p1', 
+      pos: { x: WORLD_SIZE/2, y: WORLD_SIZE/2 },
+      hp: INITIAL_PLAYER.maxHp, 
+      level: 1, 
+      xp: 0,
+      gold: 0, 
+      gems: 0,
+      nextLevelXp: GAME_BALANCE.formulas.getXPForNextLevel(1),
+      abilities: [
+        { ...ABILITIES_BASE.fireball, level: 1, lastFired: 0, cooldown: ABILITIES_BASE.fireball.baseCooldown, baseCooldown: ABILITIES_BASE.fireball.baseCooldown, trigger: 'auto' }
+      ],
+      tusks: 0, 
+      maxCombo: 0
+    };
+
+    this.cursors = this.scene.input.keyboard.createCursorKeys();
+    this.wasd = this.scene.input.keyboard.addKeys('W,S,A,D');
+    this.shiftKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
+    this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    this.scene.cameras.main.startFollow(this.sprite, true, 0.1, 0.1);
+  }
+
+  update(time, delta) {
+    if (!this.sprite.active) return;
+
+    let moveX = 0;
+    let moveY = 0;
+    const speed = this.stats.speed * 60;
+
+    if (this.cursors.left.isDown  || (this.wasd as any).A.isDown) moveX -= 1;
+    if (this.cursors.right.isDown || (this.wasd as any).D.isDown) moveX += 1;
+    if (this.cursors.up.isDown    || (this.wasd as any).W.isDown) moveY -= 1;
+    if (this.cursors.down.isDown  || (this.wasd as any).S.isDown) moveY += 1;
+
+    // Track last movement direction for dash when standing still
+    if (moveX !== 0 || moveY !== 0) {
+      const norm = new Phaser.Math.Vector2(moveX, moveY).normalize();
+      this.lastMoveDir = { x: norm.x, y: norm.y };
+    }
+
+    // --- DASH INPUT ---
+    const dashReady = time - this.dashLastUsed >= this.stats.dashCooldown;
+    const dashPressed = Phaser.Input.Keyboard.JustDown(this.shiftKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey);
+
+    if (dashPressed && dashReady && !this.isDashing) {
+      this.startDash(time);
+    }
+
+    // --- MOVEMENT ---
+    if (this.isDashing) {
+      // During dash: lock velocity to dash direction, spawn ghost
+      const dashSpeed = speed * this.stats.dashSpeedMult;
+      this.sprite.setVelocity(
+        this.dashDir.x * dashSpeed,
+        this.dashDir.y * dashSpeed
+      );
+      this.spawnGhost();
+    } else {
+      const vector = new Phaser.Math.Vector2(moveX, moveY).normalize().scale(speed);
+      this.sprite.setVelocity(vector.x, vector.y);
+    }
+
+    if (moveX < 0) this.sprite.setFlipX(true);
+    else if (moveX > 0) this.sprite.setFlipX(false);
+
+    this.stats.pos.x = this.sprite.x;
+    this.stats.pos.y = this.sprite.y;
+
+    // Sync cooldown ratio for HUD (1.0 = ready, 0.0 = just used)
+    const elapsed = time - this.dashLastUsed;
+    this.stats.dashCooldownRatio = Math.min(1.0, elapsed / this.stats.dashCooldown);
+  }
+
+  startDash(time) {
+    this.isDashing = true;
+    this.dashLastUsed = time;
+    this.dashDir = { ...this.lastMoveDir };
+
+    // Visual: semi-transparent + white flash
+    this.sprite.setAlpha(0.35);
+    this.sprite.setTint(0xffffff);
+    this.scene.time.delayedCall(80, () => {
+      if (this.sprite.active) this.sprite.clearTint();
+    });
+
+    // Camera micro-shake on dash
+    // shake removed
+
+    // End dash after dashDuration ms
+    this.scene.time.delayedCall(this.stats.dashDuration, () => {
+      this.isDashing = false;
+      this.sprite.setAlpha(1.0);
+      this.sprite.clearTint();
+    });
+  }
+
+  spawnGhost() {
+    // Spawn a fading ghost ellipse every 40ms during dash
+    const now = this.scene.time.now;
+    if (!this._lastGhostTime || now - this._lastGhostTime > 40) {
+      this._lastGhostTime = now;
+      const ghost = (this.scene.add as any).ellipse(
+        this.sprite.x, this.sprite.y,
+        32, 32,
+        0xa855f7, 0.5
+      ).setDepth(90);
+      this.scene.tweens.add({
+        targets: ghost,
+        alpha: 0,
+        scaleX: 0.5,
+        scaleY: 0.5,
+        duration: 280,
+        onComplete: () => ghost.destroy()
+      });
+    }
+  }
+
+  // Helper so Game.ts can check i-frames
+  get isInvincible() {
+    return this.isDashing;
+  }
+
+  private _lastGhostTime: number = 0;
+
+  gainXp(amount, onLevelUp) {
+    this.stats.xp += amount;
+    while (this.stats.xp >= this.stats.nextLevelXp) {
+      this.stats.xp -= this.stats.nextLevelXp;
+      this.stats.level++;
+      this.stats.nextLevelXp = GAME_BALANCE.formulas.getXPForNextLevel(this.stats.level);
+      if (onLevelUp) onLevelUp(this.stats);
+    }
+  }
+
+  addResource(type, amount, onLevelUp) {
+    switch(type) {
+      case 'XP': this.gainXp(amount, onLevelUp); break;
+      case 'GOLD': this.stats.gold += amount; break;
+      case 'GEM': this.stats.gems += amount; break;
+      case 'HP': this.stats.hp = Math.min(this.stats.maxHp, this.stats.hp + amount); break;
+    }
+  }
+}
+
+export class EnemyManager {
+  scene: Phaser.Scene;
+  group: Phaser.Physics.Arcade.Group;
+  bossGroup: Phaser.Physics.Arcade.Group;
+  projectiles: Phaser.Physics.Arcade.Group;
+  bossVisuals: Phaser.GameObjects.Group;
+  waveState: any;
+
+  constructor(scene) {
+    this.scene = scene;
+    this.waveState = {
+      currentWave: 0,
+      killedInWave: 0,
+      targetInWave: 0,
+      status: 'INACTIVE',
+      spawnQueue: [],
+      spawnTimer: 0,
+      config: null,
+      pendingBoss: null,
+      pendingBossWave: 0
+    };
+  }
+
+  create() {
+    this.group = this.scene.physics.add.group({
+      classType: Phaser.GameObjects.Ellipse,
+      maxSize: GAME_BALANCE.maxEnemies,
+      runChildUpdate: true
+    });
+    this.projectiles = this.scene.physics.add.group({
+      classType: Phaser.GameObjects.Ellipse,
+      maxSize: 100
+    });
+    // Отдельный пул для боссов — никогда не конкурирует с обычными врагами
+    this.bossGroup = this.scene.physics.add.group({
+      classType: Phaser.GameObjects.Ellipse,
+      maxSize: 1,
+      runChildUpdate: true
+    });
+    this.bossVisuals = this.scene.add.group();
+  }
+
+  // allEnemies — returns all enemies from both pools (regular + boss)
+  allEnemies(): any[] {
+    const regular = this.group ? this.group.getChildren() : [];
+    const bosses  = this.bossGroup ? this.bossGroup.getChildren() : [];
+    return [...regular, ...bosses];
+  }
+
+  startWave(waveNum) {
+    const config = GAME_BALANCE.waveLogic.generateConfig(waveNum);
+    this.waveState.currentWave    = waveNum;
+    this.waveState.killedInWave   = 0;
+    this.waveState.targetInWave   = config.totalEnemies;
+    this.waveState.config         = config;
+    this.waveState.status         = 'SPAWNING';
+    this.waveState.spawnTimer     = 0;
+    this.waveState.spawnQueue     = [];
+    this.waveState.nextSpawnAt    = 0;
+
+    // Явно деактивируем всё в bossGroup перед новой волной
+    if (this.bossGroup) {
+      this.bossGroup.getChildren().forEach((b: any) => {
+        b.setActive(false).setVisible(false);
+        if (b.body) b.body.enable = false;
+      });
+    }
+
+    const interval = config.spawnInterval / config.spawnBurst;
+
+    for (let i = 0; i < config.totalEnemies; i++) {
+       let type = 'MELEE_GRUNT';
+       const roll = Math.random();
+       let cum = 0;
+       for (const [t, w] of Object.entries(config.composition)) {
+          cum += (w as number);
+          if (roll < cum) { type = t; break; }
+       }
+       this.waveState.spawnQueue.push({ type, spawnTime: i * interval });
+    }
+
+    if (config.isBossWave) {
+      const bossKey = config.bossKey || 'SERINAX';
+      this.waveState.currentBossKey = bossKey;
+      this.waveState.pendingBoss = bossKey; // флаг — босс ещё не заспавнен
+      this.waveState.pendingBossWave = waveNum;
+    }
+
+    // Safety: if wave has 0 enemies somehow, immediately go ACTIVE
+    if (config.totalEnemies === 0) {
+      this.waveState.status = 'ACTIVE';
+      // На случай если врагов 0 но есть босс
+      if (this.waveState.pendingBoss) {
+        const bossKey = this.waveState.pendingBoss;
+        this.waveState.pendingBoss = null;
+        this.scene.time.delayedCall(500, () => {
+          this.spawnEnemy('BOSS', config.multipliers, true, bossKey);
+        });
+      }
+    }
+
+    return config.totalEnemies;
+  }
+
+  spawnEnemy(type, multipliers, isBoss = false, bossKey = 'SERINAX') {
+    let template = isBoss ? BOSS_TEMPLATES[bossKey] : ENEMY_TEMPLATES[type];
+    if (!template) template = ENEMY_TEMPLATES.MELEE_GRUNT; 
+
+    const cam = this.scene.cameras.main;
+    const pad = 100;
+    let x, y;
+    const side = Math.floor(Math.random() * 4);
+    const bounds = { x: cam.worldView.x, y: cam.worldView.y, w: cam.worldView.width, h: cam.worldView.height };
+    
+    switch(side) {
+      case 0: x = bounds.x + Math.random() * bounds.w; y = bounds.y - pad; break; 
+      case 1: x = bounds.x + bounds.w + pad; y = bounds.y + Math.random() * bounds.h; break;
+      case 2: x = bounds.x + Math.random() * bounds.w; y = bounds.y + bounds.h + pad; break;
+      case 3: x = bounds.x - pad; y = bounds.y + Math.random() * bounds.h; break;
+      default: x = 0; y = 0;
+    }
+    
+    x = Phaser.Math.Clamp(x, 0, WORLD_SIZE);
+    y = Phaser.Math.Clamp(y, 0, WORLD_SIZE);
+
+    // Боссы берутся из отдельного пула — никогда не блокируются обычными врагами
+    const enemy: any = isBoss ? this.bossGroup.get(x, y) : this.group.get(x, y);
+    if (!enemy) return;
+
+    // --- Elite affix roll ---
+    const eliteChance = this.waveState.config?.eliteChance || 0;
+    let eliteAffix = null;
+    if (!isBoss && Math.random() < eliteChance) {
+      const affixKeys = Object.keys(ELITE_AFFIXES);
+      eliteAffix = ELITE_AFFIXES[affixKeys[Math.floor(Math.random() * affixKeys.length)]];
+    }
+
+    const hpMult   = isBoss ? 1.0 : (eliteAffix ? multipliers.hp * eliteAffix.hpMult   : multipliers.hp);
+    const dmgMult  = isBoss ? 1.0 : (eliteAffix ? multipliers.damage * eliteAffix.damageMult : multipliers.damage);
+    const spdMult  = eliteAffix ? multipliers.speed * eliteAffix.speedMult  : multipliers.speed;
+    const xpMult   = isBoss ? 1.0 : (eliteAffix ? multipliers.xp * eliteAffix.xpMult   : multipliers.xp);
+    const goldMult = eliteAffix ? eliteAffix.goldMult : 1.0;
+
+    enemy.setActive(true).setVisible(true).setAlpha(1).setScale(1);
+    enemy.body.enable = true;
+
+    // Correct way to resize Phaser.GameObjects.Ellipse
+    const diameter = template.size * 2;
+    enemy.setSize(diameter, diameter);
+    enemy.geom.setTo(0, 0, diameter, diameter);
+    enemy.setDisplaySize(diameter, diameter);
+
+    // Elite enemies glow with their affix color; boss uses template color
+    const displayColor = eliteAffix ? eliteAffix.color : template.color;
+    enemy.setFillStyle(displayColor);
+    enemy.setData('baseColor', displayColor); // saved for clearTintEnemy restore
+
+    const baseStats = {
+      isBoss,
+      name: isBoss ? template.name : (eliteAffix ? `${eliteAffix.name} ${type}` : type),
+      hp: template.baseHP * hpMult,
+      maxHp: template.baseHP * hpMult,
+      damage: template.baseDamage * dmgMult,
+      baseDamage: template.baseDamage * dmgMult,
+      speed: template.speed * spdMult,
+      baseSpeed: template.speed * spdMult,
+      xp: template.xpReward * xpMult,
+      gold: (template.goldReward || 0) * goldMult,
+      behavior: template.behavior || 'CHASE',
+      attackRange: template.attackRange || 0,
+      attackRate: template.attackRate || 0,
+      projectileSpeed: template.projectileSpeed || 0,
+      explosionRadius: (template as any).explosionRadius || 0,
+      frontArmor: (template as any).frontArmor || 0,
+      eliteAffix: eliteAffix || null,
+      lastAttack: 0,
+      lastHit: 0,
+      // Status effects map: effectId → { endTime, tickTime, dps, ... }
+      statusEffects: {},
+      facingAngle: 0   // for SHIELDER front-armor direction
+    };
+
+    enemy.setData('stats', baseStats);
+    // Store original color for hit-flash restoration
+    enemy.setData('baseColor', displayColor);
+
+    if (isBoss) {
+       enemy.setData('bossData', {
+          phases: template.phases,
+          thresholds: template.phaseThresholds,
+          currentPhase: 0,
+          abilities: template.abilities,
+          timers: Object.fromEntries(template.abilities.map(a => [a, Phaser.Math.Between(4000, 8000)])),
+          state: 'IDLE',
+          stateTimer: 0
+       });
+       this.scene.cameras.main.flash(1000, 100, 0, 0);
+
+       // Boss announcement banner
+       const bossName = template.name;
+       const bossAnnounce = this.scene.add.text(
+         this.scene.cameras.main.centerX,
+         this.scene.cameras.main.centerY,
+         `⚠ ${bossName} ⚠`,
+         { fontFamily: 'Pirata One', fontSize: '72px', color: '#ff0000', stroke: '#000', strokeThickness: 8 }
+       ).setOrigin(0.5).setScrollFactor(0).setDepth(3100).setAlpha(0);
+       this.scene.tweens.add({
+         targets: bossAnnounce, alpha: 1, y: '-=80', duration: 600, hold: 2000,
+         onComplete: () => { this.scene.tweens.add({ targets: bossAnnounce, alpha: 0, duration: 500, onComplete: () => bossAnnounce.destroy() }); }
+       });
+    }
+  }
+
+  update(time, delta, playerSprite) {
+    if (this.waveState.status === 'SPAWNING') {
+       this.waveState.spawnTimer += delta;
+       while (this.waveState.spawnQueue.length > 0 &&
+              this.waveState.spawnTimer >= this.waveState.spawnQueue[0].spawnTime) {
+          const spawn = this.waveState.spawnQueue.shift();
+          this.spawnEnemy(spawn.type, this.waveState.config.multipliers);
+       }
+       // All queued — switch to ACTIVE so wave-completion can trigger
+       if (this.waveState.spawnQueue.length === 0) {
+         if (this.waveState.status === 'SPAWNING') {
+           this.waveState.status = 'ACTIVE';
+           if (this.waveState.pendingBoss) {
+             const bossKey = this.waveState.pendingBoss;
+             this.waveState.pendingBoss = null;
+             this.spawnEnemy('BOSS', this.waveState.config.multipliers, true, bossKey);
+           }
+         }
+       }
+    }
+
+    // Clean up enemy projectiles that flew off-screen
+    const cam = this.scene.cameras.main;
+    const pad = 300;
+    const camMinX = cam.worldView.x - pad, camMaxX = cam.worldView.x + cam.worldView.width + pad;
+    const camMinY = cam.worldView.y - pad, camMaxY = cam.worldView.y + cam.worldView.height + pad;
+    this.projectiles.getChildren().forEach((ep: any) => {
+      if (!ep.active) return;
+      if (ep.x < camMinX || ep.x > camMaxX || ep.y < camMinY || ep.y > camMaxY) {
+        ep.setActive(false).setVisible(false);
+        ep.body.enable = false;
+      }
+    });
+
+    this.allEnemies().forEach((e: any) => {
+      if (!e.active) return;
+      const stats = e.getData('stats');
+      if (!stats) return;
+
+      // Kill enemies that died from status effect ticks (hp<=0 but still active)
+      if (stats.hp <= 0) {
+        this.scene.events.emit('enemy_killed_by_dot', e);
+        return;
+      }
+
+      // --- Process status effects ---
+      this.processStatusEffects(e, stats, time, delta);
+
+      const isFrozen  = !!stats.statusEffects['FROZEN'];
+      const isStunned = !!stats.statusEffects['STUNNED'];
+      if (isFrozen || isStunned) {
+        e.body.setVelocity(0, 0);
+      }
+
+      // --- Elite regeneration ---
+      if (stats.eliteAffix?.regenPerSec) {
+        stats.hp = Math.min(stats.maxHp, stats.hp + stats.maxHp * stats.eliteAffix.regenPerSec * (delta / 1000));
+      }
+
+      const dist = Phaser.Math.Distance.Between(playerSprite.x, playerSprite.y, e.x, e.y);
+
+    if (stats.isBoss) {
+       this.handleBossLogic(e, time, delta, playerSprite);
+
+       // Draw boss HP bar above the boss
+       const barW = 120, barH = 8;
+       const bx = e.x - barW / 2;
+       const by = e.y - e.height / 2 - 20;
+       const hpFrac = Math.max(0, stats.hp / stats.maxHp);
+       if (!e.getData('hpBarBg')) {
+         const bg = this.scene.add.rectangle(0, 0, barW, barH, 0x330000).setDepth(500).setOrigin(0, 0.5);
+         const fill = this.scene.add.rectangle(0, 0, barW, barH, 0xff2222).setDepth(501).setOrigin(0, 0.5);
+         const label = this.scene.add.text(0, 0, stats.name, { fontSize: '13px', color: '#ff4444', fontFamily: 'monospace' }).setDepth(502).setOrigin(0.5, 1);
+         e.setData('hpBarBg', bg);
+         e.setData('hpBarFill', fill);
+         e.setData('hpBarLabel', label);
+       }
+       const bg = e.getData('hpBarBg');
+       const fill = e.getData('hpBarFill');
+       const lbl = e.getData('hpBarLabel');
+       if (bg) { bg.x = bx; bg.y = by; }
+       if (fill) { fill.x = bx; fill.y = by; fill.width = barW * hpFrac; }
+       if (lbl) { lbl.x = e.x; lbl.y = by - 6; lbl.setText(`${stats.name}  ${Math.ceil(stats.hp)}/${stats.maxHp}`); }
+    } else if (!isFrozen && !isStunned) {
+        if (stats.behavior === 'CHASE') {
+          this.scene.physics.moveToObject(e, playerSprite, stats.speed);
+        } else if (stats.behavior === 'KITE') {
+          const ideal = stats.attackRange * 0.8;
+          if (dist < ideal) {
+            const angle = Phaser.Math.Angle.Between(playerSprite.x, playerSprite.y, e.x, e.y);
+            e.body.setVelocity(Math.cos(angle) * stats.speed, Math.sin(angle) * stats.speed);
+          } else if (dist > stats.attackRange) {
+            this.scene.physics.moveToObject(e, playerSprite, stats.speed);
+          } else {
+            e.body.setVelocity(0);
+          }
+        } else if (stats.behavior === 'BOMBER') {
+          // Rushes straight at player, ignoring everything
+          this.scene.physics.moveToObject(e, playerSprite, stats.speed);
+          // Explodes when touching player
+          if (dist < 35) {
+            this.triggerBomberExplosion(e, stats, playerSprite);
+          }
+        } else if (stats.behavior === 'SUMMONER') {
+          // Tries to stay at max range
+          const keepRange = stats.attackRange * 0.9;
+          if (dist < keepRange) {
+            const angle = Phaser.Math.Angle.Between(playerSprite.x, playerSprite.y, e.x, e.y);
+            e.body.setVelocity(Math.cos(angle) * stats.speed, Math.sin(angle) * stats.speed);
+          } else {
+            e.body.setVelocity(0);
+          }
+        } else if (stats.behavior === 'MIXED') {
+          this.scene.physics.moveToObject(e, playerSprite, stats.speed);
+        }
+
+        // Track facing angle for SHIELDER
+        if (stats.behavior === 'CHASE' || stats.behavior === 'MIXED') {
+          stats.facingAngle = Phaser.Math.Angle.Between(e.x, e.y, playerSprite.x, playerSprite.y);
+        }
+      }
+
+      // --- Ranged attacks ---
+      if (stats.attackRange > 0 && dist < stats.attackRange && time - stats.lastAttack > stats.attackRate) {
+        if (stats.behavior === 'SUMMONER') {
+          // Summon 1-2 Melee Grunts nearby
+          const count = Math.random() < 0.4 ? 2 : 1;
+          for (let i = 0; i < count; i++) {
+            const sx = e.x + Phaser.Math.Between(-60, 60);
+            const sy = e.y + Phaser.Math.Between(-60, 60);
+            const minion: any = this.group.get(sx, sy);
+            if (minion) {
+              minion.setActive(true).setVisible(true).setAlpha(1);
+              minion.body.enable = true;
+              const mt = ENEMY_TEMPLATES.MELEE_GRUNT;
+              minion.setSize(mt.size * 2, mt.size * 2).setFillStyle(0xaa44ff);
+              const ms = { ...this.waveState.config?.multipliers };
+              minion.setData('stats', {
+                isBoss: false, isMinion: true, name: 'Minion', hp: mt.baseHP * (ms.hp || 1) * 0.5,
+                maxHp: mt.baseHP * (ms.hp || 1) * 0.5, damage: mt.baseDamage * (ms.damage || 1),
+                baseDamage: mt.baseDamage * (ms.damage || 1), speed: mt.speed * 1.1,
+                baseSpeed: mt.speed * 1.1, xp: mt.xpReward * 0.3, gold: 1,
+                behavior: 'CHASE', attackRange: 0, attackRate: 0, projectileSpeed: 0,
+                explosionRadius: 0, frontArmor: 0, eliteAffix: null,
+                lastAttack: 0, lastHit: 0, statusEffects: {}, facingAngle: 0
+              });
+              minion.setData('baseColor', 0xaa44ff);
+              // Summon VFX
+              const ring = (this.scene.add as any).ellipse(sx, sy, 60, 60, 0x7c3aed, 0).setDepth(120).setStrokeStyle(2, 0x7c3aed);
+              this.scene.tweens.add({ targets: ring, scaleX: 2, scaleY: 2, alpha: 0, duration: 600, onComplete: () => ring.destroy() });
+            }
+          }
+        } else if (stats.projectileSpeed > 0) {
+          const ep: any = this.projectiles.get(e.x, e.y);
+          if (ep) {
+            ep.setActive(true).setVisible(true);
+            ep.setSize(12, 12).setFillStyle(MAGIC_COLORS.ENEMY_PROJ);
+            ep.setData('damage', stats.damage);
+            this.scene.physics.moveToObject(ep, playerSprite, stats.projectileSpeed);
+          }
+        }
+        stats.lastAttack = time;
+      }
+    });
+  }
+
+  processStatusEffects(enemy, stats, time, delta) {
+    const toDelete: string[] = [];
+    for (const [effectId, effect] of Object.entries(stats.statusEffects) as any) {
+      if (time > effect.endTime) {
+        toDelete.push(effectId);
+        continue;
+      }
+      if (effectId === 'FROZEN') {
+        stats.speed = stats.baseSpeed * STATUS_EFFECTS.FROZEN.slowFactor;
+      }
+      if ((effectId === 'BURNING' || effectId === 'POISONED') && effect.nextTick && time > effect.nextTick) {
+        stats.hp -= effect.dps * (delta / 1000) * effect.tickInterval / 1000;
+        effect.nextTick = time + effect.tickInterval;
+      }
+    }
+    for (const id of toDelete) {
+      delete stats.statusEffects[id];
+      if (id === 'FROZEN' || id === 'STUNNED') stats.speed = stats.baseSpeed;
+    }
+  }
+
+  // Ellipse shapes don't have setTint/clearTint — use setFillStyle instead
+  tintEnemy(enemy: any, color: number) {
+    if (!enemy?.active) return;
+    if (typeof enemy.setFillStyle === 'function') {
+      enemy.setFillStyle(color);
+    } else if (typeof enemy.setTint === 'function') {
+      enemy.setTint(color);
+    }
+  }
+
+  clearTintEnemy(enemy: any) {
+    if (!enemy?.active) return;
+    const stats = enemy.getData('stats');
+    const baseColor = enemy.getData('baseColor') || stats?.baseColor || 0x888888;
+    if (typeof enemy.setFillStyle === 'function') {
+      enemy.setFillStyle(baseColor);
+    } else if (typeof enemy.clearTint === 'function') {
+      enemy.clearTint();
+    }
+  }
+
+  applyStatusEffect(enemy, effectId, params: any = {}, fromReaction = false) {
+    const stats = enemy.getData('stats');
+    if (!stats) return;
+    const cfg = STATUS_EFFECTS[effectId];
+    if (!cfg) return;
+
+    const now = this.scene.time.now;
+
+    // Special: WIND is a tag-only effect (no visual), used for elemental reactions
+    if (effectId === 'WIND') {
+      stats.statusEffects['WIND'] = { endTime: now + 4000 };
+      if (!fromReaction) this.checkElementalReaction(enemy, stats, 'WIND', params);
+      return;
+    }
+
+    stats.statusEffects[effectId] = {
+      endTime: now + (params.duration || cfg.duration),
+      ...(cfg.tickInterval ? {
+        tickInterval: cfg.tickInterval,
+        nextTick: now + cfg.tickInterval,
+        dps: params.dps || 10
+      } : {}),
+      ...(effectId === 'FROZEN' ? { slowFactor: cfg.slowFactor } : {})
+    };
+
+    // Visual: set status color, restore base color when effect ends
+    this.tintEnemy(enemy, cfg.color);
+    const duration = params.duration || cfg.duration;
+    this.scene.time.delayedCall(duration, () => {
+      this.clearTintEnemy(enemy);
+    });
+
+    // Only check reactions if not already inside one (prevents infinite recursion)
+    if (!fromReaction) {
+      this.checkElementalReaction(enemy, stats, effectId, params);
+    }
+  }
+
+  checkElementalReaction(enemy, stats, newEffect: string, params: any = {}) {
+    const active = Object.keys(stats.statusEffects);
+
+    // Build all pairs of (newEffect + existing) and check reaction table
+    for (const existing of active) {
+      if (existing === newEffect) continue;
+
+      // Key is always alphabetically sorted pair
+      const key = [newEffect, existing].sort().join('+');
+      const reaction = ELEMENTAL_REACTIONS[key];
+      if (!reaction) continue;
+
+      // REACTION TRIGGERED!
+      this.triggerElementalReaction(enemy, stats, reaction, params.baseDamage || 30);
+      break; // one reaction per hit
+    }
+  }
+
+  triggerElementalReaction(enemy, stats, reaction: any, baseDamage: number) {
+    if (!enemy.active) return;
+
+    const x = enemy.x;
+    const y = enemy.y;
+    const scene = this.scene;
+
+    // --- Floating reaction name banner ---
+    const label = scene.add.text(x, y - 40, `${reaction.icon} ${reaction.name}`, {
+      fontFamily: 'Pirata One',
+      fontSize: '22px',
+      color: '#' + reaction.color.toString(16).padStart(6, '0'),
+      stroke: '#000000',
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(4000);
+    scene.tweens.add({
+      targets: label, y: y - 100, alpha: 0,
+      duration: 1200, ease: 'Cubic.Out',
+      onComplete: () => label.destroy()
+    });
+
+    // Flash the enemy in reaction color
+    this.tintEnemy(enemy, reaction.color);
+    scene.time.delayedCall(300, () => { this.clearTintEnemy(enemy); });
+
+    // --- Instant burst damage ---
+    const burstDmg = Math.floor(baseDamage * reaction.damageMult);
+    stats.hp -= burstDmg;
+
+    // Floating damage number
+    const dmgTxt = scene.add.text(x + Phaser.Math.Between(-20, 20), y - 20, `-${burstDmg}`, {
+      fontFamily: 'Pirata One', fontSize: '28px',
+      color: '#' + reaction.color.toString(16).padStart(6, '0'),
+      stroke: '#000', strokeThickness: 4
+    }).setOrigin(0.5).setDepth(4001);
+    scene.tweens.add({
+      targets: dmgTxt, y: y - 80, alpha: 0, duration: 800,
+      onComplete: () => dmgTxt.destroy()
+    });
+
+    // --- VFX ring at enemy position ---
+    const ring = (scene.add as any).ellipse(x, y, 60, 60, reaction.color, 0.0)
+      .setDepth(160).setStrokeStyle(3, reaction.color, 1.0);
+    scene.tweens.add({
+      targets: ring,
+      scaleX: reaction.aoeRadius ? reaction.aoeRadius / 30 : 4,
+      scaleY: reaction.aoeRadius ? reaction.aoeRadius / 30 : 4,
+      alpha: 0, duration: 600,
+      onComplete: () => ring.destroy()
+    });
+
+    // --- Reaction-specific effects ---
+    switch (reaction.id) {
+
+      case 'SHATTER':
+        // Stun the enemy
+        stats.statusEffects['STUNNED'] = { endTime: scene.time.now + reaction.stunDuration };
+        stats.speed = 0;
+        // shake removed
+        // Ice shards particle burst
+        for (let i = 0; i < 6; i++) {
+          const angle = (i / 6) * Math.PI * 2;
+          const shard = (scene.add as any).ellipse(x, y, 8, 16, 0x88eeff, 0.9).setDepth(161);
+          scene.tweens.add({
+            targets: shard,
+            x: x + Math.cos(angle) * 80,
+            y: y + Math.sin(angle) * 80,
+            alpha: 0, scaleX: 0.3, scaleY: 0.3,
+            duration: 500, onComplete: () => shard.destroy()
+          });
+        }
+        // Remove conflicting effects
+        delete stats.statusEffects['BURNING'];
+        delete stats.statusEffects['FROZEN'];
+        break;
+
+      case 'FROZEN_SHOCK':
+        // Stun + chain to nearby enemies
+        stats.statusEffects['STUNNED'] = { endTime: scene.time.now + reaction.stunDuration };
+        stats.speed = 0;
+        // Chain lightning arcs to nearby enemies
+        const chainRadius = reaction.chainRadius || 180;
+        const chainDmg = Math.floor(burstDmg * reaction.chainDamageMult);
+        this.allEnemies().forEach((other: any) => {
+          if (!other.active || other === enemy) return;
+          if (Phaser.Math.Distance.Between(x, y, other.x, other.y) < chainRadius) {
+            const otherStats = other.getData('stats');
+            if (!otherStats) return;
+            otherStats.hp -= chainDmg;
+            // Arc VFX
+            const arc = (scene.add as any).graphics().setDepth(200);
+            arc.lineStyle(2, 0x00ffff, 0.9);
+            arc.lineBetween(x, y, other.x, other.y);
+            scene.time.delayedCall(150, () => arc.destroy());
+            // Stun chained enemies briefly
+            otherStats.statusEffects['STUNNED'] = { endTime: scene.time.now + 800 };
+          }
+        });
+        delete stats.statusEffects['FROZEN'];
+        delete stats.statusEffects['STUNNED'];
+        // shake removed
+        break;
+
+      case 'WILDFIRE':
+        // Spread fire to all enemies in aoe radius
+        const wfRadius = reaction.aoeRadius || 220;
+        const wfBurnDps = reaction.burnDps || 20;
+        // Big fire wave VFX
+        const fireWave = (scene.add as any).ellipse(x, y, wfRadius * 2, wfRadius * 2, 0xff6600, 0.4).setDepth(155);
+        scene.tweens.add({
+          targets: fireWave, scaleX: 1.3, scaleY: 1.3, alpha: 0, duration: 700,
+          onComplete: () => fireWave.destroy()
+        });
+        // shake removed
+        this.allEnemies().forEach((other: any) => {
+          if (!other.active) return;
+          if (Phaser.Math.Distance.Between(x, y, other.x, other.y) < wfRadius) {
+            this.applyStatusEffect(other, 'BURNING', {
+              duration: reaction.burnDuration || 4000,
+              dps: wfBurnDps
+            }, true); // fromReaction=true — no recursion
+          }
+        });
+        delete stats.statusEffects['BURNING'];
+        delete stats.statusEffects['WIND'];
+        break;
+
+      case 'TOXIC_BURST':
+        // Poison explosion — spreads poison in aoe
+        const tbRadius = reaction.aoeRadius || 160;
+        const poisonWave = (scene.add as any).ellipse(x, y, tbRadius * 2, tbRadius * 2, 0x88ff44, 0.45).setDepth(155);
+        scene.tweens.add({
+          targets: poisonWave, scaleX: 1.4, scaleY: 1.4, alpha: 0, duration: 600,
+          onComplete: () => poisonWave.destroy()
+        });
+        // shake removed
+        this.allEnemies().forEach((other: any) => {
+          if (!other.active || other === enemy) return;
+          if (Phaser.Math.Distance.Between(x, y, other.x, other.y) < tbRadius) {
+            this.applyStatusEffect(other, 'POISONED', { duration: 3000, dps: 18 }, true);
+          }
+        });
+        delete stats.statusEffects['POISONED'];
+        delete stats.statusEffects['STUNNED'];
+        break;
+
+      case 'PLAGUE_FIRE':
+        // Amplify existing poison DPS × poisonMult
+        if (stats.statusEffects['POISONED']) {
+          stats.statusEffects['POISONED'].dps *= (reaction.poisonMult || 3.0);
+          stats.statusEffects['POISONED'].endTime += (reaction.poisonExtend || 3000);
+        }
+        // Smoky green-orange VFX
+        for (let i = 0; i < 5; i++) {
+          const smoke = (scene.add as any).ellipse(
+            x + Phaser.Math.Between(-20, 20),
+            y + Phaser.Math.Between(-20, 20),
+            20, 20, 0xaaff00, 0.6
+          ).setDepth(158);
+          scene.tweens.add({
+            targets: smoke, y: smoke.y - 50, alpha: 0, scaleX: 2, scaleY: 2,
+            duration: 700 + i * 80, onComplete: () => smoke.destroy()
+          });
+        }
+        delete stats.statusEffects['BURNING'];
+        break;
+    }
+
+    // If enemy died from reaction damage — will be caught by hp≤0 check in main loop
+  }
+
+  triggerBomberExplosion(bomber, stats, playerSprite) {
+    const radius = stats.explosionRadius || 130;
+    // VFX
+    const circle = (this.scene.add as any).ellipse(bomber.x, bomber.y, radius * 2, radius * 2, 0xff8800, 0.6).setDepth(180);
+    this.scene.tweens.add({ targets: circle, scaleX: 1.5, scaleY: 1.5, alpha: 0, duration: 500, onComplete: () => circle.destroy() });
+    // shake removed
+
+    // Damage player if in radius
+    if (Phaser.Math.Distance.Between(bomber.x, bomber.y, playerSprite.x, playerSprite.y) < radius) {
+      this.scene.events.emit('player_damaged', stats.damage);
+    }
+
+    // Damage other nearby enemies (chain explosion)
+    this.allEnemies().forEach((e: any) => {
+      if (!e.active || e === bomber) return;
+      if (Phaser.Math.Distance.Between(bomber.x, bomber.y, e.x, e.y) < radius * 0.7) {
+        const s = e.getData('stats');
+        if (s) { s.hp -= stats.damage * 0.5; }
+      }
+    });
+
+    bomber.setActive(false).setVisible(false);
+    bomber.body.enable = false;
+  }
+
+  handleBossLogic(boss, time, delta, player) {
+     const stats = boss.getData('stats');
+     const bossData = boss.getData('bossData');
+     if (!bossData) return;
+
+     const hpPercent = stats.hp / stats.maxHp;
+     if (bossData.currentPhase < bossData.phases.length - 1) {
+        const nextThreshold = bossData.thresholds[bossData.currentPhase + 1];
+        if (hpPercent <= nextThreshold) {
+           bossData.currentPhase++;
+           const phaseConfig = bossData.phases[bossData.currentPhase];
+           stats.speed = stats.baseSpeed * (phaseConfig.speedMultiplier || 1);
+           stats.damage = stats.baseDamage * (phaseConfig.damageMultiplier || 1);
+        }
+     }
+
+     if (bossData.state === 'IDLE') {
+        this.scene.physics.moveToObject(boss, player, stats.speed);
+        for (const ability of bossData.abilities) {
+           bossData.timers[ability] -= delta;
+           if (bossData.timers[ability] <= 0) {
+              this.executeBossAbility(boss, ability, player);
+              return;
+           }
+        }
+     }
+  }
+
+  executeBossAbility(boss, ability, player) {
+     const bossData = boss.getData('bossData');
+     const stats = boss.getData('stats');
+     if (!bossData) return;
+
+     switch(ability) {
+        case 'CHARGE':
+           bossData.state = 'CHARGING';
+           this.tintEnemy(boss, MAGIC_COLORS.BOSS_CHARGE);
+           this.scene.time.delayedCall(800, () => {
+              if (!boss.active) return;
+              const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
+              boss.body.setVelocity(Math.cos(angle) * stats.speed * 4.5, Math.sin(angle) * stats.speed * 4.5);
+              this.scene.time.delayedCall(1200, () => {
+                 if (boss.active) {
+                    boss.body.setVelocity(0);
+                    bossData.state = 'IDLE';
+                    this.clearTintEnemy(boss);
+                    bossData.timers['CHARGE'] = 7000;
+                 }
+              });
+           });
+           break;
+
+        case 'AOE_SLAM':
+           bossData.state = 'SLAM';
+           this.tintEnemy(boss, MAGIC_COLORS.BOSS_AOE);
+           // Warning ring
+           const warnRing = (this.scene.add as any).ellipse(boss.x, boss.y, 480, 480, 0x9900ff, 0.0)
+             .setDepth(110).setStrokeStyle(3, 0x9900ff, 0.8);
+           this.scene.tweens.add({ targets: warnRing, alpha: 1, scaleX: 1.2, scaleY: 1.2, duration: 900, onComplete: () => warnRing.destroy() });
+           this.scene.time.delayedCall(1000, () => {
+              if (boss.active) {
+                 const dist = Phaser.Math.Distance.Between(boss.x, boss.y, player.x, player.y);
+                 if (dist < 240) {
+                    this.scene.events.emit('player_damaged', stats.damage * 1.5);
+                    // shake removed
+                 }
+                 bossData.state = 'IDLE';
+                 this.clearTintEnemy(boss);
+                 bossData.timers['AOE_SLAM'] = 5000;
+              }
+           });
+           break;
+
+        case 'SUMMON_MINIONS':
+           for (let i = 0; i < 3; i++) {
+             const angle = (i / 3) * Math.PI * 2;
+             const sx = boss.x + Math.cos(angle) * 120;
+             const sy = boss.y + Math.sin(angle) * 120;
+             this.spawnEnemy('MELEE_GRUNT', this.waveState.config?.multipliers || { hp: 1, damage: 1, speed: 1, xp: 1 });
+           }
+           bossData.timers['SUMMON_MINIONS'] = 10000;
+           bossData.state = 'IDLE';
+           break;
+
+        case 'POISON_NOVA':
+           // Fires 8 poison projectiles in all directions
+           bossData.state = 'CASTING';
+           this.tintEnemy(boss, MAGIC_COLORS.POISON);
+           for (let i = 0; i < 8; i++) {
+             const angle = (i / 8) * Math.PI * 2;
+             const ep: any = this.projectiles.get(boss.x, boss.y);
+             if (ep) {
+               ep.setActive(true).setVisible(true);
+               ep.setSize(18, 18).setFillStyle(MAGIC_COLORS.POISON);
+               ep.setData('damage', stats.damage * 0.6);
+               ep.setData('poison', true);
+               const spd = 220;
+               ep.body.setVelocity(Math.cos(angle) * spd, Math.sin(angle) * spd);
+             }
+           }
+           this.scene.time.delayedCall(400, () => {
+             if (boss.active) { this.clearTintEnemy(boss); bossData.state = 'IDLE'; }
+           });
+           bossData.timers['POISON_NOVA'] = 6000;
+           break;
+
+        case 'CHAIN_LIGHTNING':
+           // Strikes player and bounces to nearby enemies (friendly fire!)
+           bossData.state = 'CASTING';
+           this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
+           this.scene.events.emit('player_damaged', stats.damage * 0.8);
+           // Visual arc
+           const arc = (this.scene.add as any).graphics().setDepth(200);
+           arc.lineStyle(3, 0x00ddff, 1);
+           arc.lineBetween(boss.x, boss.y, player.x, player.y);
+           // shake removed
+           this.scene.time.delayedCall(200, () => { arc.destroy(); });
+           this.scene.time.delayedCall(300, () => {
+             if (boss.active) { this.clearTintEnemy(boss); bossData.state = 'IDLE'; }
+           });
+           bossData.timers['CHAIN_LIGHTNING'] = 4500;
+           break;
+
+        case 'TELEPORT':
+           // Teleports behind the player
+           bossData.state = 'TELEPORTING';
+           this.scene.tweens.add({ targets: boss, alpha: 0, duration: 300, onComplete: () => {
+             if (!boss.active) return;
+             const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y) + Math.PI;
+             boss.x = Phaser.Math.Clamp(player.x + Math.cos(angle) * 120, 80, WORLD_SIZE - 80);
+             boss.y = Phaser.Math.Clamp(player.y + Math.sin(angle) * 120, 80, WORLD_SIZE - 80);
+             this.scene.tweens.add({ targets: boss, alpha: 1, duration: 300 });
+             bossData.state = 'IDLE';
+           }});
+           bossData.timers['TELEPORT'] = 9000;
+           break;
+
+        default:
+          bossData.timers[ability] = 5000;
+          bossData.state = 'IDLE';
+     }
+  }
+}
+
+export class LootSystem {
+  scene: Phaser.Scene;
+  group: Phaser.Physics.Arcade.Group;
+
+  constructor(scene) {
+    this.scene = scene;
+  }
+
+  create() {
+    this.group = this.scene.physics.add.group({
+      classType: Phaser.GameObjects.Ellipse
+    });
+  }
+
+  spawnDrop(type, amount, x, y) {
+     const config = LOOT_CONFIG[type] || LOOT_CONFIG.XP;
+     const drop: any = this.group.get(x, y);
+     if (!drop) return;
+
+     const r = config.radius;
+     drop.setActive(true).setVisible(true);
+     drop.setFillStyle(config.color);
+     // Resize the ellipse geometry correctly for pooled objects
+     drop.setSize(r * 2, r * 2);
+     if (drop.geom) { drop.geom.setTo(0, 0, r * 2, r * 2); }
+     drop.setData('loot', { type, amount, magnetRange: config.magnetRange, lifetime: 0 });
+     drop.body.enable = true;
+     drop.body.setSize(r * 2, r * 2);
+     drop.body.reset(x, y);
+     const scatterAngle = Math.random() * Math.PI * 2;
+     const scatterSpeed = Phaser.Math.Between(50, 150);
+     drop.body.setVelocity(Math.cos(scatterAngle) * scatterSpeed, Math.sin(scatterAngle) * scatterSpeed);
+     drop.body.setDrag(150);
+  }
+
+  spawnEnemyLoot(enemy, x, y, playerHpRatio, waveMultiplier = 1) {
+    const stats = enemy.getData('stats');
+    
+    // XP: 100%
+    this.spawnDrop('XP', Math.floor(stats.xp * waveMultiplier), x, y);
+
+    // GOLD: 60%
+    if (Math.random() < 0.6) {
+      this.spawnDrop('GOLD', stats.gold || 5, x, y);
+    }
+
+    // GEM: 5%
+    if (Math.random() < 0.05) {
+      this.spawnDrop('GEM', 1, x, y);
+    }
+
+    // HP: 3% + (1 - playerHP/maxHP) * 10%
+    const hpChance = 0.03 + (1 - playerHpRatio) * 0.1;
+    if (Math.random() < hpChance) {
+      this.spawnDrop('HP', 15, x, y);
+    }
+  }
+
+  update(delta, playerManager) {
+      const playerSprite = playerManager.sprite;
+      const playerStats = playerManager.stats;
+      // Pickup range bonus based on stats
+      const playerBonus = Math.max(0, playerStats.pickupRange - 160);
+
+      this.group.getChildren().forEach((item: any) => {
+         if (!item.active) return;
+         const data = item.getData('loot');
+         if (!data) return;
+         data.lifetime += delta;
+
+         // Expire after 30 seconds
+         if (data.lifetime > 30000) {
+            item.setActive(false).setVisible(false);
+            item.body.enable = false;
+            return;
+         }
+
+         item.body.velocity.x *= 0.95;
+         item.body.velocity.y *= 0.95;
+
+         const dist = Phaser.Math.Distance.Between(item.x, item.y, playerSprite.x, playerSprite.y);
+         const effectiveRange = (data.magnetRange || 80) + playerBonus;
+         
+         // Magnet effect — direct coordinate movement
+         if (dist < effectiveRange) {
+            const angle = Phaser.Math.Angle.Between(item.x, item.y, playerSprite.x, playerSprite.y);
+            const magnetSpeed = 300 + (effectiveRange - dist) * 2;
+            item.x += Math.cos(angle) * magnetSpeed * (delta / 1000);
+            item.y += Math.sin(angle) * magnetSpeed * (delta / 1000);
+         }
+
+         // Pickup
+         if (dist < 25) {
+            this.scene.events.emit('loot_collected', data);
+            item.setActive(false).setVisible(false);
+            item.body.enable = false;
+         }
+      });
+  }
+}
+
+export class CombatManager {
+    scene: Phaser.Scene;
+    projectiles: Phaser.Physics.Arcade.Group;
+
+    constructor(scene) {
+        this.scene = scene;
+    }
+
+    create() {
+        this.projectiles = this.scene.physics.add.group({ 
+          classType: Phaser.GameObjects.Ellipse,
+          maxSize: 150 
+        });
+    }
+
+    spawnProjectile(x, y, target, damage, color = 0xff6600, speed = 800) {
+        const p: any = this.projectiles.get(x, y);
+        if (!p) return null;
+        
+        p.setActive(true).setVisible(true).setDepth(150);
+        p.setSize(16, 16).setFillStyle(color);
+        p.setData('damage', damage);
+        p.setData('spawnTime', this.scene.time.now);
+        p.body.enable = true;
+        this.scene.physics.moveToObject(p, target, speed);
+        return p;
+    }
+
+    // Call every frame to kill projectiles that flew off-screen
+    update() {
+        const now = this.scene.time.now;
+        const cam = this.scene.cameras.main;
+        const pad = 200;
+        const minX = cam.worldView.x - pad, maxX = cam.worldView.x + cam.worldView.width  + pad;
+        const minY = cam.worldView.y - pad, maxY = cam.worldView.y + cam.worldView.height + pad;
+
+        this.projectiles.getChildren().forEach((p: any) => {
+            if (!p.active) return;
+            // Kill if out of camera view OR alive > 4 seconds
+            if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY ||
+                now - (p.getData('spawnTime') || 0) > 4000) {
+                p.setActive(false).setVisible(false);
+                p.body.enable = false;
+            }
+        });
+
+        // Also clean enemy projectiles from EnemyManager
+        // (accessed via scene event for decoupling)
+    }
+}
