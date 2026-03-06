@@ -1,3 +1,4 @@
+import { ENEMY_SPRITE_REGISTRY } from './EnemySpriteRegistry';
 
 import Phaser from 'phaser';
 import { 
@@ -6,6 +7,7 @@ import {
   ELITE_AFFIXES, STATUS_EFFECTS, ELEMENTAL_REACTIONS
 } from '../constants';
 
+// Менеджер игрока: управление вводом, движением, рывком и прокачкой
 export class PlayerManager {
   scene: Phaser.Scene;
   sprite: any;
@@ -21,17 +23,28 @@ export class PlayerManager {
   dashDir: { x: number, y: number } = { x: 0, y: 1 };
   lastMoveDir: { x: number, y: number } = { x: 0, y: 1 };
 
+  // Получаем ссылку на сцену Phaser
   constructor(scene) {
     this.scene = scene;
   }
 
+  // Создаём спрайт игрока, настраиваем хитбокс и стартовые статы
   create(spriteKey) {
     this.sprite = this.scene.physics.add.sprite(WORLD_SIZE/2, WORLD_SIZE/2, spriteKey);
-    this.sprite.setScale(0.12).setDepth(100);
-    const radius = 100; 
-    this.sprite.setCircle(radius, (this.sprite.width / 2) - radius, (this.sprite.height / 2) - radius);
+    this.sprite.setDepth(100);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.body.setDrag(0);
+
+    const isSheet = spriteKey === 'wizard';
+    if (isSheet) {
+      // frame 200x280, scale 0.4 -> 80x112px on screen
+      this.sprite.setScale(0.4);
+      this.sprite.body.setSize(80, 110, false);
+      this.sprite.body.setOffset(60, 130);
+    } else {
+      // static fallback
+      this.sprite.setScale(0.12);
+    }
 
     this.stats = {
       ...INITIAL_PLAYER,
@@ -55,9 +68,11 @@ export class PlayerManager {
     this.shiftKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-    this.scene.cameras.main.startFollow(this.sprite, true, 0.1, 0.1);
+    this.scene.cameras.main.startFollow(this.sprite, true, 1.0, 1.0);
+    this.scene.cameras.main.setRoundPixels(false);
   }
 
+  // Обновление каждый кадр: движение, рывок, анимации и cooldown для HUD
   update(time, delta) {
     if (!this.sprite.active) return;
 
@@ -98,8 +113,20 @@ export class PlayerManager {
       this.sprite.setVelocity(vector.x, vector.y);
     }
 
+    // Округляем позицию — убирает субпиксельное размытие спрайта
+    this.sprite.x = Math.round(this.sprite.x);
+    this.sprite.y = Math.round(this.sprite.y);
+
     if (moveX < 0) this.sprite.setFlipX(true);
     else if (moveX > 0) this.sprite.setFlipX(false);
+
+    // Switch animation based on movement (only if anims loaded)
+    if (!(this as any)._castingAnim && this.scene.anims.exists('wizard_idle')) {
+      const isMoving = moveX !== 0 || moveY !== 0;
+      const cur = this.sprite.anims?.currentAnim?.key;
+      if (isMoving && cur !== 'wizard_run')        this.sprite.play('wizard_run', true);
+      else if (!isMoving && cur !== 'wizard_idle') this.sprite.play('wizard_idle', true);
+    }
 
     this.stats.pos.x = this.sprite.x;
     this.stats.pos.y = this.sprite.y;
@@ -109,6 +136,7 @@ export class PlayerManager {
     this.stats.dashCooldownRatio = Math.min(1.0, elapsed / this.stats.dashCooldown);
   }
 
+  // Запускает рывок в последнем направлении движения
   startDash(time) {
     this.isDashing = true;
     this.dashLastUsed = time;
@@ -132,6 +160,7 @@ export class PlayerManager {
     });
   }
 
+  // Рисует «шлейф» из призрачных эллипсов во время рывка
   spawnGhost() {
     // Spawn a fading ghost ellipse every 40ms during dash
     const now = this.scene.time.now;
@@ -153,13 +182,31 @@ export class PlayerManager {
     }
   }
 
+  // Аккуратно проигрывает анимацию каста, не ломая основную анимацию бега/остоя
+  playCastAnim() {
+    try {
+      if ((this as any)._castingAnim) return;
+      if (!this.scene.anims.exists('wizard_cast')) return;
+      if (!this.sprite?.active) return;
+      (this as any)._castingAnim = true;
+      this.sprite.play('wizard_cast', true);
+      this.sprite.once('animationcomplete-wizard_cast', () => {
+        (this as any)._castingAnim = false;
+      });
+    } catch(e) {
+      (this as any)._castingAnim = false;
+    }
+  }
+
   // Helper so Game.ts can check i-frames
+  // Во время рывка игрок считается неуязвимым для урона
   get isInvincible() {
     return this.isDashing;
   }
 
   private _lastGhostTime: number = 0;
 
+  // Добавление опыта и обработка возможного повышения уровня (может быть несколько уровней сразу)
   gainXp(amount, onLevelUp) {
     this.stats.xp += amount;
     while (this.stats.xp >= this.stats.nextLevelXp) {
@@ -170,6 +217,7 @@ export class PlayerManager {
     }
   }
 
+  // Любой лут конвертируется в ресурсы игрока (XP, GOLD, GEM, лечение HP)
   addResource(type, amount, onLevelUp) {
     switch(type) {
       case 'XP': this.gainXp(amount, onLevelUp); break;
@@ -180,6 +228,7 @@ export class PlayerManager {
   }
 }
 
+// Менеджер врагов: волны, спаун обычных и элитных врагов, боссы, статусы и реакции
 export class EnemyManager {
   scene: Phaser.Scene;
   group: Phaser.Physics.Arcade.Group;
@@ -188,6 +237,7 @@ export class EnemyManager {
   bossVisuals: Phaser.GameObjects.Group;
   waveState: any;
 
+  // Инициализируем состояние волн при создании менеджера
   constructor(scene) {
     this.scene = scene;
     this.waveState = {
@@ -203,11 +253,12 @@ export class EnemyManager {
     };
   }
 
+  // Создаём пулы объектов: обычные враги, снаряды, боссы и их визуальные элементы
   create() {
     this.group = this.scene.physics.add.group({
-      classType: Phaser.GameObjects.Ellipse,
+      classType: Phaser.GameObjects.Sprite,
       maxSize: GAME_BALANCE.maxEnemies,
-      runChildUpdate: true
+      runChildUpdate: false
     });
     this.projectiles = this.scene.physics.add.group({
       classType: Phaser.GameObjects.Ellipse,
@@ -215,20 +266,22 @@ export class EnemyManager {
     });
     // Отдельный пул для боссов — никогда не конкурирует с обычными врагами
     this.bossGroup = this.scene.physics.add.group({
-      classType: Phaser.GameObjects.Ellipse,
+      classType: Phaser.GameObjects.Sprite,
       maxSize: 1,
-      runChildUpdate: true
+      runChildUpdate: false
     });
     this.bossVisuals = this.scene.add.group();
   }
 
   // allEnemies — returns all enemies from both pools (regular + boss)
+  // Удобный список «все враги», объединяющий обычных и боссов
   allEnemies(): any[] {
     const regular = this.group ? this.group.getChildren() : [];
     const bosses  = this.bossGroup ? this.bossGroup.getChildren() : [];
     return [...regular, ...bosses];
   }
 
+  // Старт новой волны: генерируем конфиг, очередь спауна и, при необходимости, планируем босса
   startWave(waveNum) {
     const config = GAME_BALANCE.waveLogic.generateConfig(waveNum);
     this.waveState.currentWave    = waveNum;
@@ -284,6 +337,7 @@ export class EnemyManager {
     return config.totalEnemies;
   }
 
+  // Спаун одного врага / босса с учётом шаблона, множителей и элитных аффиксов
   spawnEnemy(type, multipliers, isBoss = false, bossKey = 'SERINAX') {
     let template = isBoss ? BOSS_TEMPLATES[bossKey] : ENEMY_TEMPLATES[type];
     if (!template) template = ENEMY_TEMPLATES.MELEE_GRUNT; 
@@ -325,17 +379,49 @@ export class EnemyManager {
 
     enemy.setActive(true).setVisible(true).setAlpha(1).setScale(1);
     enemy.body.enable = true;
+    enemy.setData('enemyType', type);
 
-    // Correct way to resize Phaser.GameObjects.Ellipse
+    // ── Текстура из реестра (обычные враги) или цвет босса ───────────────
+    if (isBoss) {
+      // Босс — цветной квадрат пока нет спрайта
+      const bossTemplate = BOSS_TEMPLATES[bossKey] || template;
+      const bossSize = bossTemplate.size * 2;
+      enemy.setTexture('__DEFAULT');
+      enemy.setDisplaySize(bossSize, bossSize);
+      enemy.setOrigin(0.5, 1.0);
+      enemy.setDepth(10);
+      enemy.setAlpha(1);
+      enemy.setTint(bossTemplate.color || 0xff0000);
+    } else {
+      const sprEntry = ENEMY_SPRITE_REGISTRY[type];
+      if (sprEntry && this.scene.textures.exists(sprEntry.textureKey)) {
+        enemy.setTexture(sprEntry.textureKey);
+        enemy.setScale(sprEntry.scale);
+        enemy.setDepth(10);
+        enemy.setAlpha(1);
+        enemy.clearTint();
+        (enemy as any).skipCull = true;
+        const runKey = `${sprEntry.textureKey}_run`;
+        if (this.scene.anims.exists(runKey)) enemy.play(runKey, true);
+      } else {
+        enemy.setTexture('__DEFAULT');
+        enemy.setAlpha(1);
+        enemy.setScale(1);
+        enemy.setTint(eliteAffix ? eliteAffix.color : template.color);
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
     const diameter = template.size * 2;
-    enemy.setSize(diameter, diameter);
-    enemy.geom.setTo(0, 0, diameter, diameter);
-    enemy.setDisplaySize(diameter, diameter);
-
-    // Elite enemies glow with their affix color; boss uses template color
+    if (enemy.body) {
+      const fw = enemy.width  || diameter;
+      const fh = enemy.height || diameter;
+      enemy.body.setSize(diameter, diameter);
+      enemy.body.setOffset((fw - diameter) / 2, fh - diameter);
+      enemy.body.allowGravity = false;
+      enemy.body.pushable = false;
+    }
     const displayColor = eliteAffix ? eliteAffix.color : template.color;
-    enemy.setFillStyle(displayColor);
-    enemy.setData('baseColor', displayColor); // saved for clearTintEnemy restore
+    enemy.setData('baseColor', displayColor);
 
     const baseStats = {
       isBoss,
@@ -344,8 +430,8 @@ export class EnemyManager {
       maxHp: template.baseHP * hpMult,
       damage: template.baseDamage * dmgMult,
       baseDamage: template.baseDamage * dmgMult,
-      speed: template.speed * spdMult,
-      baseSpeed: template.speed * spdMult,
+      speed: Math.round(template.speed * spdMult),
+      baseSpeed: Math.round(template.speed * spdMult),
       xp: template.xpReward * xpMult,
       gold: (template.goldReward || 0) * goldMult,
       behavior: template.behavior || 'CHASE',
@@ -393,6 +479,7 @@ export class EnemyManager {
     }
   }
 
+  // Главный апдейт врагов: спаун по очереди, ИИ поведения, выстрелы и логика боссов
   update(time, delta, playerSprite) {
     if (this.waveState.status === 'SPAWNING') {
        this.waveState.spawnTimer += delta;
@@ -432,7 +519,31 @@ export class EnemyManager {
       const stats = e.getData('stats');
       if (!stats) return;
 
-      // Kill enemies that died from status effect ticks (hp<=0 but still active)
+      // ── Анимация спрайта врага (только Sprite-объекты) ─────────────
+      if (typeof e.setFlipX === 'function') {
+        e.x = Math.round(e.x); e.y = Math.round(e.y);
+        const vx = e.body?.velocity?.x ?? 0;
+        if (vx < -5) e.setFlipX(true); else if (vx > 5) e.setFlipX(false);
+        if (!stats.isBoss) {
+          const eType = e.getData('enemyType');
+          const sprEntry = eType ? ENEMY_SPRITE_REGISTRY[eType] : null;
+          const runKey = sprEntry ? `${sprEntry.textureKey}_run`    : 'enemy_grunt_run';
+          const atkKey = sprEntry ? `${sprEntry.textureKey}_attack` : 'enemy_grunt_attack';
+          const gDist = Phaser.Math.Distance.Between(e.x, e.y, playerSprite.x, playerSprite.y);
+          const inRange = gDist < (stats.attackRange || 0) + 60;
+          const curKey = e.anims?.currentAnim?.key;
+          const isPlaying = e.anims?.isPlaying;
+          if (typeof e.play === 'function') {
+            if (inRange) {
+              if (curKey !== atkKey && this.scene.anims.exists(atkKey)) e.play(atkKey, true);
+            } else {
+              if (!(curKey === atkKey && isPlaying) && curKey !== runKey && this.scene.anims.exists(runKey)) e.play(runKey, true);
+            }
+            if (curKey === atkKey && !isPlaying && this.scene.anims.exists(runKey)) e.play(runKey, true);
+          }
+        }
+      }
+      // ──────────────────────────────────────────────────────────────────
       if (stats.hp <= 0) {
         this.scene.events.emit('enemy_killed_by_dot', e);
         return;
@@ -528,7 +639,10 @@ export class EnemyManager {
               minion.setActive(true).setVisible(true).setAlpha(1);
               minion.body.enable = true;
               const mt = ENEMY_TEMPLATES.MELEE_GRUNT;
-              minion.setSize(mt.size * 2, mt.size * 2).setFillStyle(0xaa44ff);
+              if (minion.body) minion.body.setSize(mt.size * 2, mt.size * 2);
+              minion.setTint(0xaa44ff);
+              minion.setData('enemyType', 'MELEE_GRUNT');
+              if (this.scene.textures.exists('enemy_grunt')) { minion.setTexture('enemy_grunt'); minion.setScale(0.14); if (this.scene.anims.exists('enemy_grunt_run')) minion.play('enemy_grunt_run', true); }
               const ms = { ...this.waveState.config?.multipliers };
               minion.setData('stats', {
                 isBoss: false, isMinion: true, name: 'Minion', hp: mt.baseHP * (ms.hp || 1) * 0.5,
@@ -559,6 +673,7 @@ export class EnemyManager {
     });
   }
 
+  // Тики статусов (горение, яд, заморозка и т.д.) и их снятие
   processStatusEffects(enemy, stats, time, delta) {
     const toDelete: string[] = [];
     for (const [effectId, effect] of Object.entries(stats.statusEffects) as any) {
@@ -581,26 +696,28 @@ export class EnemyManager {
   }
 
   // Ellipse shapes don't have setTint/clearTint — use setFillStyle instead
+  // Унифицированно красим врага, независимо от типа объекта (Ellipse / Sprite)
   tintEnemy(enemy: any, color: number) {
     if (!enemy?.active) return;
-    if (typeof enemy.setFillStyle === 'function') {
-      enemy.setFillStyle(color);
+    if (typeof enemy.setTint === 'function') {
+      enemy.setTint(color);
     } else if (typeof enemy.setTint === 'function') {
       enemy.setTint(color);
     }
   }
 
+  // Сбрасываем цвет врага к сохранённому базовому цвету
   clearTintEnemy(enemy: any) {
     if (!enemy?.active) return;
     const stats = enemy.getData('stats');
-    const baseColor = enemy.getData('baseColor') || stats?.baseColor || 0x888888;
-    if (typeof enemy.setFillStyle === 'function') {
-      enemy.setFillStyle(baseColor);
+    if (typeof enemy.clearTint === 'function') {
+      enemy.clearTint();
     } else if (typeof enemy.clearTint === 'function') {
       enemy.clearTint();
     }
   }
 
+  // Вешаем один статус-эффект на врага и планируем его визуальное окончание
   applyStatusEffect(enemy, effectId, params: any = {}, fromReaction = false) {
     const stats = enemy.getData('stats');
     if (!stats) return;
@@ -639,6 +756,7 @@ export class EnemyManager {
     }
   }
 
+  // Проверяем, не сработала ли элементальная реакция от сочетания статусов
   checkElementalReaction(enemy, stats, newEffect: string, params: any = {}) {
     const active = Object.keys(stats.statusEffects);
 
@@ -657,6 +775,7 @@ export class EnemyManager {
     }
   }
 
+  // Обрабатываем конкретную реакцию: урон, контроль, VFX и вторичные эффекты
   triggerElementalReaction(enemy, stats, reaction: any, baseDamage: number) {
     if (!enemy.active) return;
 
@@ -828,6 +947,7 @@ export class EnemyManager {
     // If enemy died from reaction damage — will be caught by hp≤0 check in main loop
   }
 
+  // Взрыв юнита‑бомбера: урон по игроку и окружающим врагам
   triggerBomberExplosion(bomber, stats, playerSprite) {
     const radius = stats.explosionRadius || 130;
     // VFX
@@ -851,8 +971,11 @@ export class EnemyManager {
 
     bomber.setActive(false).setVisible(false);
     bomber.body.enable = false;
+    const bGSpr = bomber.getData('goblinSprite');
+    if (bGSpr) bGSpr.setVisible(false);
   }
 
+  // Общий ИИ босса: фазы по HP и выбор моментов для способностей
   handleBossLogic(boss, time, delta, player) {
      const stats = boss.getData('stats');
      const bossData = boss.getData('bossData');
@@ -881,6 +1004,7 @@ export class EnemyManager {
      }
   }
 
+  // Конкретная реализация всех босс‑способностей (рывок, АоЕ, призыв, яд, молния, телепорт)
   executeBossAbility(boss, ability, player) {
      const bossData = boss.getData('bossData');
      const stats = boss.getData('stats');
@@ -997,20 +1121,24 @@ export class EnemyManager {
   }
 }
 
+// Система лута: дроп с врагов, магнетизм и автоподбор
 export class LootSystem {
   scene: Phaser.Scene;
   group: Phaser.Physics.Arcade.Group;
 
+  // Сохраняем сцену, чтобы уметь спаунить физические объекты лута
   constructor(scene) {
     this.scene = scene;
   }
 
+  // Пул эллипсов‑предметов, которые будут летать по карте
   create() {
     this.group = this.scene.physics.add.group({
       classType: Phaser.GameObjects.Ellipse
     });
   }
 
+  // Спаун одного конкретного предмета лута указанного типа
   spawnDrop(type, amount, x, y) {
      const config = LOOT_CONFIG[type] || LOOT_CONFIG.XP;
      const drop: any = this.group.get(x, y);
@@ -1032,6 +1160,7 @@ export class LootSystem {
      drop.body.setDrag(150);
   }
 
+  // Генерация набора дропа с одного врага (XP, золото, гемы, хилки)
   spawnEnemyLoot(enemy, x, y, playerHpRatio, waveMultiplier = 1) {
     const stats = enemy.getData('stats');
     
@@ -1055,6 +1184,7 @@ export class LootSystem {
     }
   }
 
+  // Обновление лута: затухание скорости, притягивание к игроку и автоподбор
   update(delta, playerManager) {
       const playerSprite = playerManager.sprite;
       const playerStats = playerManager.stats;
@@ -1098,14 +1228,17 @@ export class LootSystem {
   }
 }
 
+// Менеджер боевых снарядов игрока
 export class CombatManager {
     scene: Phaser.Scene;
     projectiles: Phaser.Physics.Arcade.Group;
 
+    // Сохраняем ссылку на сцену для создания/движения снарядов
     constructor(scene) {
         this.scene = scene;
     }
 
+    // Пул эллипсов‑снарядов игрока с ограничением по количеству
     create() {
         this.projectiles = this.scene.physics.add.group({ 
           classType: Phaser.GameObjects.Ellipse,
@@ -1113,6 +1246,7 @@ export class CombatManager {
         });
     }
 
+    // Создаёт один снаряд, запускает его к цели и возвращает объект
     spawnProjectile(x, y, target, damage, color = 0xff6600, speed = 800) {
         const p: any = this.projectiles.get(x, y);
         if (!p) return null;
@@ -1127,6 +1261,7 @@ export class CombatManager {
     }
 
     // Call every frame to kill projectiles that flew off-screen
+    // Чистка снарядов: удаляем те, что улетели за экран или живут > 4 секунд
     update() {
         const now = this.scene.time.now;
         const cam = this.scene.cameras.main;

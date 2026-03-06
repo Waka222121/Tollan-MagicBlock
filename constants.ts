@@ -303,41 +303,41 @@ export const BOSS_TEMPLATES = {
     ],
     abilities: ['CHARGE', 'AOE_SLAM', 'SUMMON_MINIONS']
   },
-  MALGRATH: {
-    name: "MALGRATH",
+  VORGATH: {
+    name: "VORGATH",
     baseHP: 10000,
     baseDamage: 45,
     speed: 85,
     size: 36,
-    color: 0x8800ff,
+    color: 0x44aa22,        // болотно-зелёный
     xpReward: 2000,
     goldReward: 180,
     behavior: 'BOSS_AI',
-    phaseThresholds: [1.0, 0.5, 0.15],
+    phaseThresholds: [1.0, 0.6, 0.3],
     phases: [
-      { speedMultiplier: 1.0, damageMultiplier: 1.0, message: "MALGRATH RISES" },
-      { speedMultiplier: 1.1, damageMultiplier: 1.5, message: "VOID CORRUPTION: ACTIVE" },
-      { speedMultiplier: 1.3, damageMultiplier: 2.2, message: "MALGRATH UNLEASHED" }
+      { speedMultiplier: 1.0, damageMultiplier: 1.0, message: "VORGATH EMERGES" },
+      { speedMultiplier: 1.3, damageMultiplier: 1.2, message: "THE SWARM AWAKENS" },
+      { speedMultiplier: 1.6, damageMultiplier: 1.5, message: "VORGATH — PLAGUE FORM" }
     ],
-    abilities: ['POISON_NOVA', 'SUMMON_MINIONS', 'TELEPORT']
+    abilities: ['SUMMON_MINIONS', 'POISON_NOVA']
   },
-  VEXARA: {
-    name: "VEXARA",
+  NEXARION: {
+    name: "NEXARION",
     baseHP: 15000,
     baseDamage: 50,
     speed: 120,
     size: 28,
-    color: 0x00ddff,
+    color: 0x0044ff,        // электрический синий
     xpReward: 3000,
     goldReward: 250,
     behavior: 'BOSS_AI',
-    phaseThresholds: [1.0, 0.7, 0.35],
+    phaseThresholds: [1.0, 0.5, 0.25],
     phases: [
-      { speedMultiplier: 1.0, damageMultiplier: 1.0, message: "VEXARA DESCENDS" },
-      { speedMultiplier: 1.4, damageMultiplier: 1.2, message: "STORM SURGE: ENGAGED" },
-      { speedMultiplier: 1.8, damageMultiplier: 1.6, message: "VEXARA — FULL FURY" }
+      { speedMultiplier: 1.0, damageMultiplier: 1.0, message: "NEXARION MANIFESTS" },
+      { speedMultiplier: 1.4, damageMultiplier: 1.3, message: "STATIC OVERLOAD: ENGAGED" },
+      { speedMultiplier: 1.8, damageMultiplier: 1.7, message: "NEXARION — FULL DISCHARGE" }
     ],
-    abilities: ['CHARGE', 'CHAIN_LIGHTNING', 'AOE_SLAM']
+    abilities: ['CHAIN_LIGHTNING', 'TELEPORT']
   }
 };
 
@@ -361,10 +361,10 @@ export const GAME_BALANCE = {
       const hpMult = 1.0 + (wave - 1) * difficultyStep;
       const dmgMult = 1.0 + (wave - 1) * 0.08;  // было 0.15
       
-      // Boss waves: 5=SERINAX, 10=MALGRATH, 15=VEXARA, затем повторяются каждые 5
-      const bossOrder = ['SERINAX', 'MALGRATH', 'VEXARA'];
+      // Boss waves: 5=SERINAX, 10=VORGATH, 15=NEXARION, затем повторяются каждые 5
+      const bossOrder = ['SERINAX', 'VORGATH', 'NEXARION'];
       const isBossWave = wave % 5 === 0;
-      const bossKey = isBossWave ? bossOrder[Math.floor(wave / 5 - 1) % bossOrder.length] : 'SERINAX';
+      const bossKey = isBossWave ? bossOrder[Math.floor(wave / 5 - 1) % bossOrder.length] : null;
 
       // New enemies unlock progressively
       const hasBomber   = wave >= 2;

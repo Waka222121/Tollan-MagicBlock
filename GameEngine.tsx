@@ -59,16 +59,27 @@ const GameEngine = ({ state, onStateChange, onGameOver, onExit, onRetry, lastRun
       parent: containerRef.current,
       width:  window.innerWidth,
       height: window.innerHeight,
-      physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+      physics: { default: 'arcade', arcade: { gravity: { x: 0, y: 0 }, debug: false } },
       backgroundColor: '#050508',
       pixelArt: true,
-      roundPixels: true,
+      roundPixels: false,
+      scale: {
+        mode: Phaser.Scale.NONE,
+        autoCenter: Phaser.Scale.NO_CENTER,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
       scene: [Game],
     });
 
-    // Убираем линии между тайлами через CSS
-    const canvas = containerRef.current?.querySelector('canvas');
-    if (canvas) canvas.style.imageRendering = 'pixelated';
+    // Глобальный стиль для canvas — querySelector не работает т.к. canvas создаётся Phaser асинхронно
+    const styleId = 'phaser-pixelated';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.textContent = 'canvas { image-rendering: pixelated; image-rendering: crisp-edges; }';
+      document.head.appendChild(style);
+    }
 
     gameRef.current = game;
     setIsLoaded(true);

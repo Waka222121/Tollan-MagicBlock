@@ -1,3 +1,4 @@
+import { ENEMY_SPRITE_REGISTRY } from './EnemySpriteRegistry';
 
 import Phaser from 'phaser';
 import { GameStateMachine } from './GameStateMachine';
@@ -25,6 +26,7 @@ export default class Game extends Phaser.Scene {
   maxCombo: number;
   comboText: any;
   _lastSyncTime: number;
+  _lastRegenTime: number;
 
   load: Phaser.Loader.LoaderPlugin;
   textures: Phaser.Textures.TextureManager;
@@ -42,6 +44,7 @@ export default class Game extends Phaser.Scene {
     this.currentCombo = 0;
     this.comboLevel   = 0;
     this.maxCombo     = 0;
+    this._lastRegenTime = 0;
   }
 
   init() {
@@ -53,12 +56,30 @@ export default class Game extends Phaser.Scene {
     this.maxCombo     = 0;
     this.comboTimer   = null;
     this.comboText    = null;
+    this._lastRegenTime = 0;
   }
 
   preload() {
     this.load.crossOrigin = 'anonymous';
-    this.load.image('player', PLAYER_SPRITE_B64);
     this.load.image('floor_tile', 'assets/floor_tile.jpg');
+    // Spritesheet: 3 rows x 4 frames, each 200x280px
+    this.load.spritesheet('wizard', 'assets/wizard_sheet_full.png', {
+      frameWidth: 200,
+      frameHeight: 280
+    });
+    // Fallback static sprite if sheet not found
+    this.load.image('wizard_static', 'https://i.ibb.co/LkhK9L9/purple-wizard.png');
+    // Goblin spritesheet — 4 cols × 2 rows, 308×432 px per frame
+    // Row 0 (frames 0–3): run   |   Row 1 (frames 4–7): attack
+    const _lk = new Set<string>();
+    Object.values(ENEMY_SPRITE_REGISTRY).forEach(e => {
+      if (!e.assetPath || _lk.has(e.textureKey)) return;
+      _lk.add(e.textureKey);
+      this.load.spritesheet(e.textureKey, e.assetPath, { frameWidth: e.frameWidth, frameHeight: e.frameHeight, ...(e.spacing ? { spacing: e.spacing } : {}) });
+    });
+    this.load.on('loaderror', (file: any) => {
+      console.warn('[Game] Failed to load:', file.key);
+    });
   }
 
   create() {
@@ -75,8 +96,43 @@ export default class Game extends Phaser.Scene {
     this.combatManager = new CombatManager(this);
     this.combatManager.create();
 
+    // Выбираем ключ спрайта: анимированный или статичный фоллбек
+    const sheetOK = this.textures.exists('wizard') && this.textures.get('wizard').frameTotal >= 12;
+    const spriteKey = sheetOK ? 'wizard' : 'wizard_static';
+    console.log('[Game] spriteKey:', spriteKey, '| frameTotal:', sheetOK ? this.textures.get('wizard').frameTotal : 1);
+
     this.playerManager = new PlayerManager(this);
-    this.playerManager.create('player');
+    this.playerManager.create(spriteKey);
+
+    // ── Wizard animations (только если спрайтшит загрузился) ─────────────
+    if (sheetOK) {
+      // Отключаем билинейную фильтрацию на спрайте визарда
+      this.textures.get('wizard').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('wizard_idle')) {
+        this.anims.create({ key: 'wizard_idle', frames: this.anims.generateFrameNumbers('wizard', { start: 0, end: 3 }), frameRate: 6, repeat: -1 });
+      }
+      if (!this.anims.exists('wizard_run')) {
+        this.anims.create({ key: 'wizard_run',  frames: this.anims.generateFrameNumbers('wizard', { start: 4, end: 7 }), frameRate: 10, repeat: -1 });
+      }
+      if (!this.anims.exists('wizard_cast')) {
+        this.anims.create({ key: 'wizard_cast', frames: this.anims.generateFrameNumbers('wizard', { start: 8, end: 11 }), frameRate: 10, repeat: 0 });
+      }
+      this.playerManager.sprite.play('wizard_idle');
+    } else {
+      console.warn('[Game] wizard_sheet_full.png не найден — используется статичный спрайт');
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    // ── Анимации из реестра ─────────────────────────────────────────────
+    const _ak = new Set<string>();
+    Object.values(ENEMY_SPRITE_REGISTRY).forEach(cfg => {
+      if (!this.textures.exists(cfg.textureKey)) return;
+      if (!_ak.has(cfg.textureKey)) { _ak.add(cfg.textureKey); this.textures.get(cfg.textureKey).setFilter(Phaser.Textures.FilterMode.NEAREST); }
+      const rk = `${cfg.textureKey}_run`, ak = `${cfg.textureKey}_attack`;
+      if (!this.anims.exists(rk)) this.anims.create({ key: rk, frames: this.anims.generateFrameNumbers(cfg.textureKey, { start: cfg.anims.run.start, end: cfg.anims.run.end }), frameRate: cfg.anims.run.frameRate, repeat: -1 });
+      if (!this.anims.exists(ak)) this.anims.create({ key: ak, frames: this.anims.generateFrameNumbers(cfg.textureKey, { start: cfg.anims.attack.start, end: cfg.anims.attack.end }), frameRate: cfg.anims.attack.frameRate, repeat: 0 });
+    });
+    // ─────────────────────────────────────────────────────────────────────
 
     this.enemyManager = new EnemyManager(this);
     this.enemyManager.create();
@@ -227,8 +283,8 @@ export default class Game extends Phaser.Scene {
         stats.lastHit = this.time.now;
         
         const baseColor = enemy.getData('baseColor') || 0x888888;
-        enemy.setFillStyle(isCrit ? 0xffff00 : 0xffffff);
-        this.time.delayedCall(60, () => { if (enemy.active) enemy.setFillStyle(baseColor); });
+        enemy.setTint(isCrit ? 0xffff00 : 0xffffff);
+        this.time.delayedCall(60, () => { if (enemy.active) enemy.clearTint(); });
 
         // Poison projectile effect
         if (proj.getData('poison')) {
@@ -283,8 +339,8 @@ export default class Game extends Phaser.Scene {
         stats.hp -= finalDmg;
         stats.lastHit = this.time.now;
         const baseColor = enemy.getData('baseColor') || 0x888888;
-        enemy.setFillStyle(isCrit ? 0xffff00 : 0xffffff);
-        this.time.delayedCall(60, () => { if (enemy.active) enemy.setFillStyle(baseColor); });
+        enemy.setTint(isCrit ? 0xffff00 : 0xffffff);
+        this.time.delayedCall(60, () => { if (enemy.active) enemy.clearTint(); });
         if (proj.getData('poison')) this.enemyManager.applyStatusEffect(enemy, 'POISONED', { duration: proj.getData('poisonDuration') || 4000, dps: proj.getData('poisonDps') || 15, baseDamage: finalDmg });
         if (proj.getData('wind')) this.enemyManager.applyStatusEffect(enemy, 'WIND', { baseDamage: finalDmg });
         proj.setActive(false).setVisible(false);
@@ -484,7 +540,7 @@ export default class Game extends Phaser.Scene {
     enemy.setActive(false).setVisible(false);
     enemy.body.enable = false;
 
-    // Clean up boss HP bar if present
+    // sprite hidden via setActive/setVisible
     const hpBarBg   = enemy.getData('hpBarBg');
     const hpBarFill = enemy.getData('hpBarFill');
     const hpBarLbl  = enemy.getData('hpBarLabel');
@@ -543,6 +599,7 @@ export default class Game extends Phaser.Scene {
 
       this.playerManager.stats.abilities.forEach((ab) => {
          if (ab.cooldown > 0 && time - ab.lastFired > ab.cooldown) {
+              if (this.playerManager?.sprite?.active) this.playerManager.playCastAnim();
             const baseDamage = ab.damage || 35;
             const dmgMult = this.playerManager.stats.damageMultiplier;
             const isCritBase = () => Math.random() < this.playerManager.stats.critChance;
@@ -556,8 +613,8 @@ export default class Game extends Phaser.Scene {
               const stats = e.getData('stats');
               if (!stats) return;
               const baseColor = e.getData('baseColor') || stats.color;
-              e.setFillStyle(crit ? 0xffff00 : 0xffffff);
-              this.time.delayedCall(80, () => { if (e.active) e.setFillStyle(baseColor); });
+              e.setTint(crit ? 0xffff00 : 0xffffff);
+              this.time.delayedCall(80, () => { if (e.active) e.clearTint(); });
               stats.hp -= dmg;
               if (stats.hp <= 0 && e.active) this.onEnemyKilled(e);
             };
@@ -701,13 +758,18 @@ export default class Game extends Phaser.Scene {
 
             // --- STORM LANCE (piercing lightning bolt) ---
             } else if (ab.id === 'storm_lance') {
-                const target: any = this.physics.closest(this.playerManager.sprite, activeEnemies);
+                const cam = this.cameras.main;
+                const view = cam.worldView;
+                // Стреляем только если ближайший враг виден на экране
+                const visibleEnemies = activeEnemies.filter((e: any) =>
+                  e.x >= view.x && e.x <= view.x + view.width &&
+                  e.y >= view.y && e.y <= view.y + view.height
+                );
+                const target: any = this.physics.closest(this.playerManager.sprite, visibleEnemies);
                 if (target) {
                   const px = this.playerManager.sprite.x, py = this.playerManager.sprite.y;
                   const angle = Phaser.Math.Angle.Between(px, py, target.x, target.y);
-                  // Длина луча = диагональ экрана (покрывает всё поле зрения)
-                  const cam = this.cameras.main;
-                  const lanceLen = Math.sqrt(cam.width * cam.width + cam.height * cam.height);
+                  const lanceLen = ab.range || 600;
                   const ex = px + Math.cos(angle) * lanceLen;
                   const ey = py + Math.sin(angle) * lanceLen;
                   // VFX — thick lightning beam
@@ -715,11 +777,8 @@ export default class Game extends Phaser.Scene {
                   beam.lineStyle(6, MAGIC_COLORS.LIGHTNING, 0.9); beam.lineBetween(px, py, ex, ey);
                   beam.lineStyle(2, 0xffffff, 0.6); beam.lineBetween(px, py, ex, ey);
                   this.tweens.add({ targets: beam, alpha: 0, duration: 300, onComplete: () => beam.destroy() });
-                  // Hit only enemies visible in camera viewport
-                  const view = cam.worldView;
-                  activeEnemies.forEach((e: any) => {
-                    // Только враги в поле зрения камеры
-                    if (e.x < view.x || e.x > view.x + view.width || e.y < view.y || e.y > view.y + view.height) return;
+                  // Бьём только видимых врагов в луче
+                  visibleEnemies.forEach((e: any) => {
                     const dist = Phaser.Math.Distance.Between(px, py, e.x, e.y);
                     // Check if enemy is near the line
                     const proj = Phaser.Math.Distance.Between(
@@ -885,8 +944,8 @@ export default class Game extends Phaser.Scene {
                     if (dist <= radius) {
                       applyToEnemy(e, voidDmg, true);
                       // Purple tint flash
-                      e.setFillStyle(0x9B59B6);
-                      this.time.delayedCall(120, () => { if (e.active) e.setFillStyle(e.getData('baseColor') || 0x888888); });
+                      e.setTint(0x9B59B6);
+                      this.time.delayedCall(120, () => { if (e.active) e.clearTint(); });
                       // CRIT! floating text
                       const critTxt = this.add.text(e.x, e.y - 20, 'VOID CRIT!', {
                         fontSize: '16px', color: '#D700FF', fontStyle: 'bold', fontFamily: 'monospace',

@@ -46,35 +46,48 @@ export class TestSuite {
   static testBossPhases(scene: Phaser.Scene) {
     console.log('Test 3: Boss phase transitions...');
     const template = BOSS_TEMPLATES.SERINAX;
-    
-    // Mock boss stats
+
+    if (!template?.phaseThresholds || !template?.phases) {
+      console.warn('SKIP: SERINAX template missing phaseThresholds/phases');
+      return;
+    }
+
+    // Pure logic test — no Phaser objects, just simulate handleBossLogic math
     const stats = {
       maxHp: template.baseHP,
       hp: template.baseHP,
       speed: template.speed,
-      baseSpeed: template.speed
+      baseSpeed: template.speed,
+      damage: template.baseDamage,
+      baseDamage: template.baseDamage
     };
-    
+
     const bossData = {
       currentPhase: 0,
       thresholds: template.phaseThresholds,
-      phases: template.phases
+      phases: template.phases,
+      state: 'IDLE',
+      abilities: [],
+      timers: {}
     };
 
-    // Simulate taking damage to 50%
+    // Simulate taking damage to 50% HP
     stats.hp = stats.maxHp * 0.5;
-    
-    // Logic from handleBossLogic
-    if (bossData.currentPhase < bossData.thresholds.length - 1) {
-       const nextThreshold = bossData.thresholds[bossData.currentPhase + 1];
-       if ((stats.hp / stats.maxHp) <= nextThreshold) {
-          bossData.currentPhase++;
-          const phaseConfig = bossData.phases[bossData.currentPhase];
-          stats.speed = stats.baseSpeed * (phaseConfig.speedMultiplier || 1);
-       }
+
+    // Mirror of handleBossLogic phase-check logic
+    if (bossData.currentPhase < bossData.phases.length - 1) {
+      const nextThreshold = bossData.thresholds[bossData.currentPhase + 1];
+      if (nextThreshold !== undefined && (stats.hp / stats.maxHp) <= nextThreshold) {
+        bossData.currentPhase++;
+        const phaseConfig = bossData.phases[bossData.currentPhase];
+        if (phaseConfig) {
+          stats.speed  = stats.baseSpeed  * (phaseConfig.speedMultiplier  || 1);
+          stats.damage = stats.baseDamage * (phaseConfig.damageMultiplier || 1);
+        }
+      }
     }
 
-    const phasePassed = bossData.currentPhase === 1; // 0.5 < 0.6 (Phase 1 threshold)
+    const phasePassed = bossData.currentPhase === 1;
     const speedPassed = stats.speed > template.speed;
 
     console.assert(phasePassed, 'Should be in phase 1 at 50% HP', { actual: bossData.currentPhase });
