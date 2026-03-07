@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
-import { getAI, blobToBase64 } from '../../lib/gemini';
+import { blobToBase64 } from '../../lib/gemini';
+import { getAIClient, formatAiError } from '../../lib/aiClient';
 
 const ForgeModule = () => {
   const [prompt, setPrompt] = useState('');
@@ -40,7 +41,7 @@ const ForgeModule = () => {
         await ensureKeySelected();
       }
 
-      const ai = getAI();
+      const ai = getAIClient();
       
       if (config.type === 'video') {
         let videoParams: any = {
@@ -116,7 +117,7 @@ const ForgeModule = () => {
       if (e.message?.includes("entity was not found")) {
         await (window as any).aistudio.openSelectKey();
       }
-      setError(`FORGE_ERROR: ${e.message}`);
+      setError(formatAiError(e, 'FORGE_ERROR'));
     } finally {
       setIsForging(false);
     }

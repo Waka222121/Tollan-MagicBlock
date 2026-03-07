@@ -31,7 +31,7 @@ const App = () => {
   }, []);
 
   const isInGame = gameState === GameState.PLAYING
-    || gameState === GameState.LEVELING
+    || gameState === GameState.LEVEL_UP
     || gameState === GameState.GAMEOVER
     || gameState === GameState.PAUSED;
 

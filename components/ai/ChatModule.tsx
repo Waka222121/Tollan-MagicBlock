@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { getAI } from '../../lib/gemini';
+import { getAIClient, formatAiError } from '../../lib/aiClient';
 
 const ChatModule = () => {
   const [messages, setMessages] = useState<any[]>([]);
@@ -22,7 +22,7 @@ const ChatModule = () => {
     setIsThinking(true);
 
     try {
-      const ai = getAI();
+      const ai = getAIClient();
       const modelName = useThinking ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
       
       let latLng = null;
@@ -50,7 +50,7 @@ const ChatModule = () => {
       setMessages(prev => [...prev, { role: 'model', text, thinking, sources }]);
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { role: 'model', text: `CRITICAL_ERROR: ${error}` }]);
+      setMessages(prev => [...prev, { role: 'model', text: formatAiError(error, 'CRITICAL_ERROR') }]);
     } finally {
       setIsThinking(false);
     }
