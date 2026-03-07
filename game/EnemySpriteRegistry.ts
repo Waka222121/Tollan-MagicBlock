@@ -36,8 +36,9 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Melee Grunt',
     textureKey:  'enemy_grunt',
     assetPath:   'assets/enemy_grunt.png',
-    frameWidth:  500,
-    frameHeight: 700,
+    // Источник: 2048x2048, 4 колонки x 2 ряда = 8 кадров
+    frameWidth:  512,
+    frameHeight: 1024,
     scale:       0.14,
     anims: {
       run:    { start: 0, end: 3, frameRate: 8  },
@@ -67,8 +68,8 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Tank Brute',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
+    frameWidth:  512,
+    frameHeight: 1024,
     scale:       0.18,
     anims: {
       run:    { start: 0, end: 3, frameRate: 6  },
@@ -81,8 +82,8 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Elite Demon',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
+    frameWidth:  512,
+    frameHeight: 1024,
     scale:       0.16,
     anims: {
       run:    { start: 0, end: 3, frameRate: 8  },
@@ -95,8 +96,8 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Void Bomber',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
+    frameWidth:  512,
+    frameHeight: 1024,
     scale:       0.12,
     anims: {
       run:    { start: 0, end: 3, frameRate: 10 },
@@ -109,8 +110,8 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Shadow Summoner',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
+    frameWidth:  512,
+    frameHeight: 1024,
     scale:       0.14,
     anims: {
       run:    { start: 0, end: 3, frameRate: 6  },
@@ -123,8 +124,8 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Iron Shielder',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
+    frameWidth:  512,
+    frameHeight: 1024,
     scale:       0.15,
     anims: {
       run:    { start: 0, end: 3, frameRate: 7  },
