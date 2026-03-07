@@ -18,26 +18,6 @@ npm install
 ```
 
 ### 3) Настройка окружения
- codex/check-models-and-textures-for-bugs-ochy6m
-Скопируйте шаблон и укажите новый ключ Gemini:
-```bash
-cp .env.local.example .env.local
-```
-
-Откройте `.env.local` и вставьте ключ:
-```bash
-GEMINI_API_KEY=your_new_api_key_here
-```
-
-### 4) Проверка ассетов (моделей/текстур)
-Перед запуском рекомендуется прогнать валидацию спрайтшитов:
-```bash
-npm run check:assets
-```
-
-### 5) Запуск в режиме разработки
-```bash
-
 Создайте файл `.env.local` и укажите ключ Gemini:
 ```bash
 GEMINI_API_KEY=your_key_here
@@ -52,15 +32,12 @@ npm run check:assets
 ### 5) Запуск в режиме разработки
 ```bash
 < codex/check-models-and-textures-for-bugs-k8e2bj
-> main
 # стандартный режим
 npm run dev
 
 # явный запуск для доступа по сети/в контейнере
 npm run dev:host
 ```
-<<< codex/check-models-and-textures-for-bugs-ochy6m
-
 =
 npm run dev
 ```
@@ -68,16 +45,12 @@ npm run dev
 Откройте адрес из консоли (обычно `http://localhost:5173`).
 
 > main
- main
 Откройте адрес из консоли. В этом репозитории по умолчанию:
 - локально: `http://localhost:3000/`
 - по сети: `http://<ВАШ_IP>:3000/`
 
 Если после шага 5 видите `ERR_CONNECTION_REFUSED`:
-< codex/check-models-and-textures-for-bugs-ochy6m
-
- codex/check-models-and-textures-for-bugs-k8e2bj
-> main
+<<<< codex/check-models-and-textures-for-bugs-k8e2bj
 1. Проверьте, что в консоли после запуска есть строка `VITE ready` и адрес `http://localhost:3000/`.
 2. Убедитесь, что открываете именно порт **3000** (а не 5173).
 3. Для удалённой машины/контейнера используйте `npm run dev:host`, затем адрес из строки `Network`.
@@ -86,9 +59,7 @@ npm run dev
    ```bash
    npm run dev:host -- --port 4173
    ```
-< codex/check-models-and-textures-for-bugs-ochy6m
-
-
+====
 1. Проверьте, что в консоли после `npm run dev` есть строка `VITE ready` и адрес `http://localhost:3000/`.
 2. Убедитесь, что открываете именно порт **3000** (а не 5173).
 3. Если запускаете проект на удалённой машине/сервере, открывайте адрес из строки `Network` (или пробросьте порт 3000).
@@ -99,7 +70,6 @@ npm run dev
    ```
  main
 >>>> main
-> main
 
 ### 6) Production build
 ```bash
