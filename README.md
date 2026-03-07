@@ -33,6 +33,9 @@ npm run check:assets
 ```bash
 npm run dev
 ```
+ codex/check-models-and-textures-for-bugs-32vj10
+Откройте адрес из консоли (обычно `http://localhost:5173`).
+
 Откройте адрес из консоли. В этом репозитории по умолчанию:
 - локально: `http://localhost:3000/`
 - по сети: `http://<ВАШ_IP>:3000/`
@@ -46,6 +49,7 @@ npm run dev
    ```bash
    npm run dev
    ```
+ main
 
 ### 6) Production build
 ```bash
