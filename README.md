@@ -2,19 +2,47 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Tollan MagicBlock
 
-This contains everything you need to run your app locally.
+## Запуск обновлённого репозитория с GitHub
 
-View your app in AI Studio: https://ai.studio/apps/drive/1fo6d3j3iKj6hE18OZIzRgZXLjmHQ0h4n
+### 1) Клонирование
+```bash
+git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ>
+cd Tollan-MagicBlock
+```
 
-## Run Locally
+### 2) Установка зависимостей
+```bash
+npm install
+```
 
-**Prerequisites:**  Node.js
+### 3) Настройка окружения
+Создайте файл `.env.local` и укажите ключ Gemini:
+```bash
+GEMINI_API_KEY=your_key_here
+```
 
+### 4) Проверка ассетов (моделей/текстур)
+Перед запуском рекомендуется прогнать валидацию спрайтшитов:
+```bash
+npm run check:assets
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+### 5) Запуск в режиме разработки
+```bash
+npm run dev
+```
+Откройте адрес из консоли (обычно `http://localhost:5173`).
+
+### 6) Production build
+```bash
+npm run build
+npm run preview
+```
+
+---
+
+## Notes
+- Node.js 18+ рекомендуется.
+- Если `npm run check:assets` показывает `WARN` про `unused remainder`, это не всегда критичная ошибка, но значит в спрайтшите есть незадействованная область.
