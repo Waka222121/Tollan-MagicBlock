@@ -125,7 +125,15 @@ function main() {
   for (const r of reports) {
     const status = r.problems.length ? 'WARN' : 'OK';
     console.log(`- [${status}] ${r.name}: ${r.width}x${r.height}, frame ${r.frameWidth}x${r.frameHeight}, grid ${r.cols}x${r.rows}, frames=${r.frames}, required>${r.maxFrame}`);
+<<<< codex/check-models-and-textures-for-bugs-ls3ifd
     for (const p of r.problems) console.log(`    - ${p}`);
+====
+< codex/check-models-and-textures-for-bugs-saqghz
+    for (const p of r.problems) console.log(`    - ${p}`);
+
+    for (const p of r.problems) console.log(`    • ${p}`);
+ main
+>>>> main
   }
   console.log(`- [OK] floor tile: ${floor.width}x${floor.height}`);
 
