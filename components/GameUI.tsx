@@ -5,7 +5,8 @@ const GameUI = ({
   gameState, player, timer, kills, upgradeChoices, onSelectUpgrade, onQuit, onRetry, onPause, onResume, runStats,
   wave = 1, waveProgress = 0, waveTarget = 0,
   dashCooldownRatio = 1.0, isDashing = false,
-  combo = 0, comboLevel = 0, comboMult = 1.0
+  combo = 0, comboLevel = 0, comboMult = 1.0,
+  comboTimeoutMs = 3000,
 }) => {
   const formatTime = (s) => {
     const mins = Math.floor(s / 60);

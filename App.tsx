@@ -49,6 +49,7 @@ const App = () => {
       {isInGame && (
         <GameEngine
           key={`game-${runKey.current}`}
+          runId={runKey.current}
           state={gameState}
           onStateChange={setGameState}
           onGameOver={handleGameOver}

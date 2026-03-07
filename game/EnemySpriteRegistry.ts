@@ -54,8 +54,8 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     textureKey:  'enemy_archer',
     assetPath:   'assets/enemy_archer.png',
     frameWidth:  500,
-    frameHeight: 500,
-    scale:       0.14,
+    frameHeight: 250,
+    scale:       0.22,
     anims: {
       run:    { start: 0, end: 3, frameRate: 8  },
       attack: { start: 4, end: 7, frameRate: 10 },

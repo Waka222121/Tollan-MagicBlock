@@ -39,8 +39,7 @@ export class PlayerManager {
     if (isSheet) {
       // frame 200x280, scale 0.4 -> 80x112px on screen
       this.sprite.setScale(0.4);
-      this.sprite.body.setSize(80, 110, false);
-      this.sprite.body.setOffset(60, 130);
+      this.sprite.body.setSize(50, 70, true);  // center=true автоматически центрирует
     } else {
       // static fallback
       this.sprite.setScale(0.12);
@@ -69,7 +68,7 @@ export class PlayerManager {
     this.spaceKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     this.scene.cameras.main.startFollow(this.sprite, true, 1.0, 1.0);
-    this.scene.cameras.main.setRoundPixels(false);
+    this.scene.cameras.main.setRoundPixels(true);
   }
 
   // Обновление каждый кадр: движение, рывок, анимации и cooldown для HUD
@@ -377,7 +376,7 @@ export class EnemyManager {
     const xpMult   = isBoss ? 1.0 : (eliteAffix ? multipliers.xp * eliteAffix.xpMult   : multipliers.xp);
     const goldMult = eliteAffix ? eliteAffix.goldMult : 1.0;
 
-    enemy.setActive(true).setVisible(true).setAlpha(1).setScale(1);
+    enemy.setVisible(false).setAlpha(0);  // скрываем пока не настроим
     enemy.body.enable = true;
     enemy.setData('enemyType', type);
 
@@ -401,6 +400,14 @@ export class EnemyManager {
         enemy.setAlpha(1);
         enemy.clearTint();
         (enemy as any).skipCull = true;
+        // После окончания attack — сразу возвращаемся на run
+        enemy.off('animationcomplete');
+        enemy.on('animationcomplete', (anim: any) => {
+          const rk = `${sprEntry.textureKey}_run`;
+          if (anim.key === `${sprEntry.textureKey}_attack` && this.scene.anims.exists(rk)) {
+            enemy.play(rk, true);
+          }
+        });
         const runKey = `${sprEntry.textureKey}_run`;
         if (this.scene.anims.exists(runKey)) enemy.play(runKey, true);
       } else {
@@ -413,13 +420,12 @@ export class EnemyManager {
     // ─────────────────────────────────────────────────────────────────────
     const diameter = template.size * 2;
     if (enemy.body) {
-      const fw = enemy.width  || diameter;
-      const fh = enemy.height || diameter;
-      enemy.body.setSize(diameter, diameter);
-      enemy.body.setOffset((fw - diameter) / 2, fh - diameter);
+      // center=true: Phaser автоматически центрирует тело в спрайте
+      enemy.body.setSize(diameter, diameter, true);
       enemy.body.allowGravity = false;
       enemy.body.pushable = false;
     }
+    enemy.setActive(true).setVisible(true).setAlpha(1);  // показываем только после настройки
     const displayColor = eliteAffix ? eliteAffix.color : template.color;
     enemy.setData('baseColor', displayColor);
 
@@ -1255,7 +1261,11 @@ export class CombatManager {
         p.setSize(16, 16).setFillStyle(color);
         p.setData('damage', damage);
         p.setData('spawnTime', this.scene.time.now);
+        p.body.reset(x, y);          // сбрасываем позицию и скорость из пула
         p.body.enable = true;
+        p.body.setSize(22, 22);      // чуть больше визуала — компенсирует tunnel effect
+        p.body.setOffset(-3, -3);
+        p.setData('target', target); // сохраняем цель для homing
         this.scene.physics.moveToObject(p, target, speed);
         return p;
     }
@@ -1276,6 +1286,16 @@ export class CombatManager {
                 now - (p.getData('spawnTime') || 0) > 4000) {
                 p.setActive(false).setVisible(false);
                 p.body.enable = false;
+                return;
+            }
+            // Лёгкий homing — подправляем курс к живой цели
+            const tgt = p.getData('target');
+            if (tgt?.active && p.body) {
+                const age = now - (p.getData('spawnTime') || 0);
+                if (age < 600) { // только первые 0.6с
+                    const spd = Math.hypot(p.body.velocity.x, p.body.velocity.y) || 820;
+                    this.scene.physics.moveToObject(p, tgt, spd);
+                }
             }
         });
 
