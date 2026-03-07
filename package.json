@@ -7,11 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+< codex/check-models-and-textures-for-bugs-saqghz
+    "check:assets": "node scripts/check-model-texture-assets.mjs",
+    "dev:host": "vite --host 0.0.0.0 --port 3000"
+
  codex/check-models-and-textures-for-bugs-k8e2bj
     "check:assets": "node scripts/check-model-texture-assets.mjs",
     "dev:host": "vite --host 0.0.0.0 --port 3000"
 
     "check:assets": "node scripts/check-model-texture-assets.mjs"
+ main
  main
   },
   "dependencies": {
