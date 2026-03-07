@@ -1,12 +1,16 @@
+import type { GameSyncPayload, PlayerStatsSnapshot, RunStats, GameStateValue } from '../types';
+
 /**
- * GameBridge — единственный источник истины для связи React ↔ Phaser.
- * React пишет сюда при каждом рендере.
- * Phaser читает отсюда при каждом вызове.
- * Никакого timing-hell, никаких замыканий, никаких init().
+ * GameBridge is the single communication channel between React and Phaser.
  */
-export const GameBridge = {
-  onStateChange:    (_state: string) => {},
-  onGameOver:       (_stats: any)    => {},
-  generateUpgrades: (_stats: any)    => {},
-  onSyncData:       (_data: any)     => {},
+export const GameBridge: {
+  onStateChange: (state: GameStateValue) => void;
+  onGameOver: (stats: RunStats) => void;
+  generateUpgrades: (stats: PlayerStatsSnapshot) => void;
+  onSyncData: (data: GameSyncPayload) => void;
+} = {
+  onStateChange: () => {},
+  onGameOver: () => {},
+  generateUpgrades: () => {},
+  onSyncData: () => {},
 };

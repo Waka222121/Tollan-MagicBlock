@@ -2,7 +2,10 @@ import { ENEMY_SPRITE_REGISTRY } from './EnemySpriteRegistry';
 
 import Phaser from 'phaser';
 import { GameStateMachine } from './GameStateMachine';
-import { PlayerManager, EnemyManager, LootSystem, CombatManager } from './GameManagers';
+import { PlayerManager } from './managers/PlayerManager';
+import { EnemyManager } from './managers/EnemyManager';
+import { LootSystem } from './managers/LootSystem';
+import { CombatManager } from './managers/CombatManager';
 import { WORLD_SIZE, GAME_BALANCE, ABILITIES_BASE, MAGIC_COLORS } from '../constants';
 import { GameState } from '../types';
 import { UpgradeSystem } from './UpgradeSystem';
@@ -196,7 +199,7 @@ export default class Game extends Phaser.Scene {
     this.stateMachine.addState('LEVEL_UP', {
       enter: () => {
         this.physics.pause();
-        // generateUpgrades will call onStateChange(LEVELING) after setting choices
+        // generateUpgrades will call onStateChange(LEVEL_UP) after setting choices
         GameBridge.generateUpgrades(this.playerManager.stats);
       }
     });

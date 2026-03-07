@@ -18,7 +18,10 @@ npm install
 ```
 
 ### 3) Настройка окружения
+< codex/check-models-and-textures-for-bugs-ls3ifd
+=
  codex/check-models-and-textures-for-bugs-saqghz
+ main
 Скопируйте шаблон и укажите новый ключ Gemini:
 ```bash
 cp .env.local.example .env.local
@@ -37,6 +40,8 @@ npm run check:assets
 
 ### 5) Запуск в режиме разработки
 ```bash
+ codex/check-models-and-textures-for-bugs-ls3ifd
+
 
 Создайте файл `.env.local` и укажите ключ Gemini:
 ```bash
@@ -51,15 +56,18 @@ npm run check:assets
 
 ### 5) Запуск в режиме разработки
 ```bash
-< codex/check-models-and-textures-for-bugs-k8e2bj
->>>> main
+ codex/check-models-and-textures-for-bugs-k8e2bj
+ main
+ main
 # стандартный режим
 npm run dev
 
 # явный запуск для доступа по сети/в контейнере
 npm run dev:host
 ```
-< codex/check-models-and-textures-for-bugs-saqghz
+ codex/check-models-and-textures-for-bugs-ls3ifd
+
+ codex/check-models-and-textures-for-bugs-saqghz
 =
 =
 npm run dev
@@ -69,15 +77,19 @@ npm run dev
 
 > main
  main
+ main
 Откройте адрес из консоли. В этом репозитории по умолчанию:
 - локально: `http://localhost:3000/`
 - по сети: `http://<ВАШ_IP>:3000/`
 
 Если после шага 5 видите `ERR_CONNECTION_REFUSED`:
+ codex/check-models-and-textures-for-bugs-ls3ifd
+
 < codex/check-models-and-textures-for-bugs-saqghz
 
  codex/check-models-and-textures-for-bugs-k8e2bj
 > main
+ main
 1. Проверьте, что в консоли после запуска есть строка `VITE ready` и адрес `http://localhost:3000/`.
 2. Убедитесь, что открываете именно порт **3000** (а не 5173).
 3. Для удалённой машины/контейнера используйте `npm run dev:host`, затем адрес из строки `Network`.
@@ -86,6 +98,8 @@ npm run dev
    ```bash
    npm run dev:host -- --port 4173
    ```
+ codex/check-models-and-textures-for-bugs-ls3ifd
+
  codex/check-models-and-textures-for-bugs-saqghz
 
 
@@ -100,6 +114,7 @@ npm run dev
  main
  main
  main
+ main
 
 ### 6) Production build
 ```bash
@@ -107,8 +122,47 @@ npm run build
 npm run preview
 ```
 
+ codex/check-models-and-textures-for-bugs-ls3ifd
+
 ---
+ main
 
 ## Notes
 - Node.js 18+ рекомендуется.
 - Если `npm run check:assets` показывает `WARN` про `unused remainder`, это не всегда критичная ошибка, но значит в спрайтшите есть незадействованная область.
+ codex/check-models-and-textures-for-bugs-ls3ifd
+
+## Архитектура проекта
+
+### Основные слои
+- `App.tsx`: роутинг экранов приложения (Hub, GameEngine, AI Terminal).
+- `GameEngine.tsx`: жизненный цикл Phaser и синхронизация данных в React.
+- `game/Game.ts`: основная игровая сцена Phaser.
+- `game/GameManagers.ts`: ядро игровых менеджеров (игрок, враги, бой, лут).
+- `components/`: UI-обвязка меню и HUD.
+- `components/ai/`: AI-модули терминала (чат, forge, voice, media).
+- `lib/aiClient.ts`: единая точка работы с Gemini-клиентом и ошибками.
+- `scripts/check-model-texture-assets.mjs`: проверка размеров текстур и спрайтшитов.
+
+### Поток данных
+1. `index.tsx` монтирует `App`.
+2. `App` создаёт `GameEngine` при переходе в игру.
+3. `GameEngine` поднимает Phaser `Game` сцену.
+4. Сцена отправляет состояние в React через `GameBridge.onSyncData`.
+5. React рисует HUD через `GameUI`.
+
+### Где что менять
+- Геймплей, враги, волны: `game/Game.ts`, `game/GameManagers.ts`, `constants.ts`.
+- Визуальные спрайты врагов: `game/EnemySpriteRegistry.ts` и `public/assets`.
+- Интерфейс игры: `components/GameUI.tsx`, `components/Hub.tsx`.
+- AI-функции: `components/ai/*` и `lib/aiClient.ts`.
+
+## CI проверка
+Рекомендуемый pipeline:
+```bash
+npm ci
+npm run check:assets
+npm run build
+```
+=======
+>>>> main

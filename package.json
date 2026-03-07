@@ -7,6 +7,10 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+ codex/check-models-and-textures-for-bugs-ls3ifd
+    "check:assets": "node scripts/check-model-texture-assets.mjs",
+    "dev:host": "vite --host 0.0.0.0 --port 3000"
+
 < codex/check-models-and-textures-for-bugs-saqghz
     "check:assets": "node scripts/check-model-texture-assets.mjs",
     "dev:host": "vite --host 0.0.0.0 --port 3000"
@@ -18,6 +22,7 @@
     "check:assets": "node scripts/check-model-texture-assets.mjs"
  main
  main
+>>>>> main
   },
   "dependencies": {
     "react": "^19.2.4",

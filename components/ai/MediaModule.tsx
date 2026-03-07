@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { getAI, blobToBase64 } from '../../lib/gemini';
+import { blobToBase64 } from '../../lib/gemini';
+import { getAIClient, formatAiError } from '../../lib/aiClient';
 
 const MediaModule = () => {
   const [file, setFile] = useState(null);
@@ -22,7 +23,7 @@ const MediaModule = () => {
     setAnalysis(null);
 
     try {
-      const ai = getAI();
+      const ai = getAIClient();
       const base64 = await blobToBase64(file);
       
       const response = await ai.models.generateContent({
@@ -39,7 +40,7 @@ const MediaModule = () => {
       });
       setAnalysis(response.text || "ANALYSIS_FAILURE: NO_RECORDS_FOUND");
     } catch (e) {
-      setAnalysis(`CRITICAL_ANALYSIS_ERROR: ${e.message}`);
+      setAnalysis(formatAiError(e, 'CRITICAL_ANALYSIS_ERROR'));
     } finally {
       setIsAnalyzing(false);
     }

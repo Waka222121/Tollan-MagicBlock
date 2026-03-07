@@ -31,7 +31,7 @@ const GameUI = ({
       `}</style>
 
       {/* ── HUD TOP ─────────────────────────────────────────────────── */}
-      {(gameState === GameState.PLAYING || gameState === GameState.PAUSED || gameState === GameState.LEVELING) && (
+      {(gameState === GameState.PLAYING || gameState === GameState.PAUSED || gameState === GameState.LEVEL_UP) && (
         <div className="absolute top-0 left-0 w-full p-10 flex flex-col gap-4 z-[140]">
 
           {/* Top row */}
@@ -165,7 +165,7 @@ const GameUI = ({
       )}
 
       {/* ── LEVEL UP MENU ───────────────────────────────────────────── */}
-      {gameState === GameState.LEVELING && (
+      {gameState === GameState.LEVEL_UP && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl pointer-events-auto flex flex-col items-center justify-center z-[200] p-12">
           <div className="text-center mb-16">
             <span className="text-purple-500 text-[12px] font-black tracking-[1em] uppercase mb-4 block">Ascension_Protocol</span>

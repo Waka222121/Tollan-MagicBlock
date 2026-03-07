@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { getAI, encode, decode, decodeAudioData } from '../../lib/gemini';
+import { encode, decode, decodeAudioData } from '../../lib/gemini';
+import { getAIClient } from '../../lib/aiClient';
 import { Modality, LiveServerMessage } from '@google/genai';
 
 const VoiceModule = () => {
@@ -23,7 +24,7 @@ const VoiceModule = () => {
     }
 
     try {
-      const ai = getAI();
+      const ai = getAIClient();
       const inputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       const outputCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
       audioContextRef.current = outputCtx;
