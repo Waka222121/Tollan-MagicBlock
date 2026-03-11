@@ -1,11 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  EnemySpriteRegistry.ts  —  чистый .ts без React
-//  Импортируется в Game.ts и GameManagers.ts
-//
-//  Чтобы добавить спрайт для врага:
-//    1. Положи PNG в public/assets/
-//    2. Заполни assetPath и поменяй textureKey на уникальный
-//    3. Укажи frameWidth / frameHeight / scale
+//  EnemySpriteRegistry.ts
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface EnemyAnimDef {
@@ -15,14 +9,16 @@ export interface EnemyAnimDef {
 }
 
 export interface EnemySpriteEntry {
-  enemyType:   string;   // ключ из ENEMY_TEMPLATES
-  label:       string;   // читаемое имя
-  textureKey:  string;   // ключ текстуры в Phaser
-  assetPath:   string;   // путь к PNG (пустая строка = не загружать)
-  frameWidth:  number;
-  frameHeight: number;
+  enemyType:    string;
+  label:        string;
+  textureKey:   string;
+  textureKeyAtk?: string;   // отдельная текстура для attack (если шиты разделены)
+  assetPath:    string;
+  assetPathAtk?: string;    // путь к attack-шиту
+  frameWidth:   number;
+  frameHeight:  number;
   spacing?: number;
-  scale:       number;
+  scale:        number;
   anims: {
     run:    EnemyAnimDef;
     attack: EnemyAnimDef;
@@ -36,27 +32,27 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Melee Grunt',
     textureKey:  'enemy_grunt',
     assetPath:   'assets/enemy_grunt.png',
-    // Источник: 2048x2048, 4 колонки x 2 ряда = 8 кадров
-    frameWidth:  512,
-    frameHeight: 1024,
-    scale:       0.14,
+    // Измерено: sheet 2000x1400 → 4x2 кадра → frame 500x700
+    // row 0 (frames 0–3): run | row 1 (frames 4–7): attack
+    frameWidth:  500,
+    frameHeight: 700,
+    scale:       0.15,  // visual: 75x105px
     anims: {
       run:    { start: 0, end: 3, frameRate: 8  },
       attack: { start: 4, end: 7, frameRate: 10 },
     },
   },
 
-  // ── Ниже используют enemy_grunt как временный фоллбек ─────────────────
-  // Замени textureKey + assetPath когда добавишь свой PNG в assets/
-
   RANGED_ARCHER: {
     enemyType:   'RANGED_ARCHER',
     label:       'Ranged Archer',
     textureKey:  'enemy_archer',
     assetPath:   'assets/enemy_archer.png',
-    frameWidth:  500,
-    frameHeight: 250,
-    scale:       0.22,
+    // Измерено: sheet 1000x560 → 4x2 кадра → frame 250x280
+    // row 0 (frames 0–3): run | row 1 (frames 4–7): attack
+    frameWidth:  250,
+    frameHeight: 280,
+    scale:       0.28,  // visual: 70x78px — чуть меньше grunt
     anims: {
       run:    { start: 0, end: 3, frameRate: 8  },
       attack: { start: 4, end: 7, frameRate: 10 },
@@ -64,16 +60,18 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
   },
 
   TANK_BRUTE: {
-    enemyType:   'TANK_BRUTE',
-    label:       'Tank Brute',
-    textureKey:  'enemy_grunt',
-    assetPath:   '',
-    frameWidth:  512,
-    frameHeight: 1024,
-    scale:       0.18,
+    enemyType:    'TANK_BRUTE',
+    label:        'Tank Brute',
+    textureKey:   'tank_brute_run',
+    textureKeyAtk:'tank_brute_attack',
+    assetPath:    'assets/tank_brute_run.png',
+    assetPathAtk: 'assets/tank_brute_attack.png',
+    frameWidth:   180,
+    frameHeight:  193,
+    scale:        0.80,
     anims: {
-      run:    { start: 0, end: 3, frameRate: 6  },
-      attack: { start: 4, end: 7, frameRate: 8  },
+      run:    { start: 0, end: 3, frameRate: 6 },
+      attack: { start: 0, end: 3, frameRate: 8 },
     },
   },
 
@@ -82,9 +80,9 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Elite Demon',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  512,
-    frameHeight: 1024,
-    scale:       0.16,
+    frameWidth:  500,
+    frameHeight: 700,
+    scale:       0.15,
     anims: {
       run:    { start: 0, end: 3, frameRate: 8  },
       attack: { start: 4, end: 7, frameRate: 10 },
@@ -96,9 +94,9 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Void Bomber',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  512,
-    frameHeight: 1024,
-    scale:       0.12,
+    frameWidth:  500,
+    frameHeight: 700,
+    scale:       0.10,  // visual: 50x70px — маленький и юркий
     anims: {
       run:    { start: 0, end: 3, frameRate: 10 },
       attack: { start: 4, end: 7, frameRate: 12 },
@@ -110,9 +108,9 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Shadow Summoner',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  512,
-    frameHeight: 1024,
-    scale:       0.14,
+    frameWidth:  500,
+    frameHeight: 700,
+    scale:       0.13,
     anims: {
       run:    { start: 0, end: 3, frameRate: 6  },
       attack: { start: 4, end: 7, frameRate: 8  },
@@ -124,8 +122,8 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
     label:       'Iron Shielder',
     textureKey:  'enemy_grunt',
     assetPath:   '',
-    frameWidth:  512,
-    frameHeight: 1024,
+    frameWidth:  500,
+    frameHeight: 700,
     scale:       0.15,
     anims: {
       run:    { start: 0, end: 3, frameRate: 7  },

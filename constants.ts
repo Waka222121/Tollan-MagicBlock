@@ -202,7 +202,7 @@ export const ENEMY_TEMPLATES = {
     baseHP: 35,
     baseDamage: 10,
     speed: 150,
-    size: 16,
+    size: 28,  // fix: было 16 (32px hitbox = 30% visual) → теперь 56px = 53% visual
     xpReward: 8,
     goldReward: 3,
     behavior: 'CHASE',
@@ -213,7 +213,7 @@ export const ENEMY_TEMPLATES = {
     baseHP: 25,
     baseDamage: 14,
     speed: 110,
-    size: 14,
+    size: 23,  // fix: было 14 (28px hitbox = 33% visual) → теперь 46px = 55% visual
     xpReward: 12,
     goldReward: 5,
     behavior: 'KITE',

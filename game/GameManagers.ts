@@ -233,8 +233,48 @@ export class EnemyManager {
   group: Phaser.Physics.Arcade.Group;
   bossGroup: Phaser.Physics.Arcade.Group;
   projectiles: Phaser.Physics.Arcade.Group;
+  arrowProjectiles: Phaser.Physics.Arcade.Group;
   bossVisuals: Phaser.GameObjects.Group;
   waveState: any;
+
+  // Полный reset объекта из пула, чтобы не "прилипали" scale/frame/flip/velocity от прошлой жизни
+  private resetPooledEnemySprite(enemy: any, x: number, y: number) {
+    // Visual defaults
+    enemy.setVisible(false);
+    enemy.setAlpha(1);
+    enemy.setDepth(10);
+    enemy.setScale(1);
+    enemy.setFlipX(false);
+    enemy.setFlipY(false);
+    enemy.setRotation(0);
+    enemy.setAngle(0);
+    enemy.setOrigin(0.5, 0.5);
+    if (typeof enemy.clearTint === 'function') enemy.clearTint();
+    if (typeof enemy.setCrop === 'function') enemy.setCrop();
+
+    // Animation defaults
+    try { enemy.anims?.stop?.(); } catch {}
+    enemy.off?.('animationcomplete');
+    enemy.off?.('animationupdate');
+
+    // Physics defaults
+    if (enemy.body) {
+      enemy.body.enable = true;
+      enemy.body.allowGravity = false;
+      enemy.body.setVelocity(0, 0);
+      enemy.body.setAcceleration(0, 0);
+      enemy.body.setDrag(0, 0);
+      enemy.body.reset(x, y);
+    } else {
+      enemy.x = x;
+      enemy.y = y;
+    }
+
+    // Data defaults — keep only what we set later
+    enemy.setData('stats', null);
+    enemy.setData('enemyType', null);
+    enemy.setData('baseColor', null);
+  }
 
   // Инициализируем состояние волн при создании менеджера
   constructor(scene) {
@@ -262,6 +302,12 @@ export class EnemyManager {
     this.projectiles = this.scene.physics.add.group({
       classType: Phaser.GameObjects.Ellipse,
       maxSize: 100
+    });
+    // Отдельный пул стрел для лучника
+    this.arrowProjectiles = this.scene.physics.add.group({
+      classType: Phaser.GameObjects.Image,
+      maxSize: 40,
+      runChildUpdate: false
     });
     // Отдельный пул для боссов — никогда не конкурирует с обычными врагами
     this.bossGroup = this.scene.physics.add.group({
@@ -360,7 +406,13 @@ export class EnemyManager {
 
     // Боссы берутся из отдельного пула — никогда не блокируются обычными врагами
     const enemy: any = isBoss ? this.bossGroup.get(x, y) : this.group.get(x, y);
-    if (!enemy) return;
+    if (!enemy) {
+      console.warn(`[EnemyManager] Pool exhausted for type=${type} isBoss=${isBoss} — enemy skipped`);
+      return null;
+    }
+
+    // СРАЗУ reset + скрываем до рендера — group.get() делает setActive/setVisible(true) автоматически
+    this.resetPooledEnemySprite(enemy, x, y);
 
     // --- Elite affix roll ---
     const eliteChance = this.waveState.config?.eliteChance || 0;
@@ -376,7 +428,6 @@ export class EnemyManager {
     const xpMult   = isBoss ? 1.0 : (eliteAffix ? multipliers.xp * eliteAffix.xpMult   : multipliers.xp);
     const goldMult = eliteAffix ? eliteAffix.goldMult : 1.0;
 
-    enemy.setVisible(false).setAlpha(0);  // скрываем пока не настроим
     enemy.body.enable = true;
     enemy.setData('enemyType', type);
 
@@ -395,37 +446,60 @@ export class EnemyManager {
       const sprEntry = ENEMY_SPRITE_REGISTRY[type];
       if (sprEntry && this.scene.textures.exists(sprEntry.textureKey)) {
         enemy.setTexture(sprEntry.textureKey);
-        enemy.setScale(sprEntry.scale);
+        // ВАЖНО: при реюзе из пула мог остаться frame от другой текстуры
+        enemy.setFrame(0);
+        // scale выставляется ПОСЛЕ body.setSize ниже — не здесь
         enemy.setDepth(10);
         enemy.setAlpha(1);
         enemy.clearTint();
         (enemy as any).skipCull = true;
-        // После окончания attack — сразу возвращаемся на run
+        // После окончания attack — возвращаемся на run (и текстуру если шиты раздельные)
         enemy.off('animationcomplete');
         enemy.on('animationcomplete', (anim: any) => {
           const rk = `${sprEntry.textureKey}_run`;
           if (anim.key === `${sprEntry.textureKey}_attack` && this.scene.anims.exists(rk)) {
+            if ((sprEntry as any).textureKeyAtk) enemy.setTexture(sprEntry.textureKey);
             enemy.play(rk, true);
           }
         });
         const runKey = `${sprEntry.textureKey}_run`;
         if (this.scene.anims.exists(runKey)) enemy.play(runKey, true);
       } else {
+        // Текстура не найдена — рендерим заметный цветной квадрат-заглушку
+        console.warn(`[EnemyManager] Missing texture for type="${type}", key="${sprEntry?.textureKey ?? 'unknown'}". Using colored placeholder.`);
         enemy.setTexture('__DEFAULT');
+        enemy.setDisplaySize(40, 40);  // явный размер — иначе 1×1 пиксель невидим
         enemy.setAlpha(1);
-        enemy.setScale(1);
-        enemy.setTint(eliteAffix ? eliteAffix.color : template.color);
+        enemy.setTint(eliteAffix ? eliteAffix.color : (template.color ?? 0xff00ff));
       }
     }
     // ─────────────────────────────────────────────────────────────────────
     const diameter = template.size * 2;
     if (enemy.body) {
-      // center=true: Phaser автоматически центрирует тело в спрайте
-      enemy.body.setSize(diameter, diameter, true);
+      const sprEntry = isBoss ? null : ENEMY_SPRITE_REGISTRY[type];
+      if (sprEntry) {
+        // Для спрайтовых врагов: центрируем хитбокс относительно нативного фрейма.
+        // body.setSize / setOffset работают в нативных (до масштаба) пикселях,
+        // поэтому делим world-diameter на scale, чтобы получить нативный размер.
+        // ВАЖНО: setScale вызывается здесь, после body.setSize — иначе пул объектов
+        // может передать спрайт с чужим scale, что ломает хитбокс и визуал.
+        enemy.setScale(sprEntry.scale);
+        const nativeBodySize = diameter / sprEntry.scale;
+        const offsetX = (sprEntry.frameWidth  - nativeBodySize) / 2;
+        const offsetY = (sprEntry.frameHeight - nativeBodySize) / 2;
+        enemy.body.setSize(nativeBodySize, nativeBodySize, false);
+        enemy.body.setOffset(offsetX, offsetY);
+        // Общая "подошва" — чтобы разные спрайты стояли на одном уровне
+        enemy.setOrigin(0.5, 0.85);
+      } else {
+        enemy.body.setSize(diameter, diameter, true);
+        enemy.setOrigin(0.5, 0.5);
+      }
       enemy.body.allowGravity = false;
       enemy.body.pushable = false;
     }
-    enemy.setActive(true).setVisible(true).setAlpha(1);  // показываем только после настройки
+    // показываем только после настройки (и после scale/body reset)
+    enemy.setActive(true).setVisible(true).setAlpha(1);
     const displayColor = eliteAffix ? eliteAffix.color : template.color;
     enemy.setData('baseColor', displayColor);
 
@@ -483,6 +557,8 @@ export class EnemyManager {
          onComplete: () => { this.scene.tweens.add({ targets: bossAnnounce, alpha: 0, duration: 500, onComplete: () => bossAnnounce.destroy() }); }
        });
     }
+
+    return enemy;
   }
 
   // Главный апдейт врагов: спаун по очереди, ИИ поведения, выстрелы и логика боссов
@@ -491,8 +567,15 @@ export class EnemyManager {
        this.waveState.spawnTimer += delta;
        while (this.waveState.spawnQueue.length > 0 &&
               this.waveState.spawnTimer >= this.waveState.spawnQueue[0].spawnTime) {
-          const spawn = this.waveState.spawnQueue.shift();
-          this.spawnEnemy(spawn.type, this.waveState.config.multipliers);
+          const spawn = this.waveState.spawnQueue[0];
+          const spawned = this.spawnEnemy(spawn.type, this.waveState.config.multipliers);
+          // Удаляем из очереди только если спавн прошёл (или пул полон — иначе зависнем навсегда)
+          this.waveState.spawnQueue.shift();
+          if (spawned === null) {
+            // Пул переполнен — попробуем снова через 200 мс, вернём в голову очереди
+            // Чтобы не зависнуть: если пул реально полон, просто пропускаем этого врага
+            console.warn(`[EnemyManager] Skipping spawn of type=${spawn.type} — pool full`);
+          }
        }
        // All queued — switch to ACTIVE so wave-completion can trigger
        if (this.waveState.spawnQueue.length === 0) {
@@ -519,6 +602,14 @@ export class EnemyManager {
         ep.body.enable = false;
       }
     });
+    // Очистка стрел лучника
+    this.arrowProjectiles.getChildren().forEach((arrow: any) => {
+      if (!arrow.active) return;
+      if (arrow.x < camMinX || arrow.x > camMaxX || arrow.y < camMinY || arrow.y > camMaxY) {
+        arrow.setActive(false).setVisible(false);
+        arrow.body.enable = false;
+      }
+    });
 
     this.allEnemies().forEach((e: any) => {
       if (!e.active) return;
@@ -535,17 +626,27 @@ export class EnemyManager {
           const sprEntry = eType ? ENEMY_SPRITE_REGISTRY[eType] : null;
           const runKey = sprEntry ? `${sprEntry.textureKey}_run`    : 'enemy_grunt_run';
           const atkKey = sprEntry ? `${sprEntry.textureKey}_attack` : 'enemy_grunt_attack';
+          const atkTexKey = sprEntry ? ((sprEntry as any).textureKeyAtk || sprEntry.textureKey) : sprEntry?.textureKey;
           const gDist = Phaser.Math.Distance.Between(e.x, e.y, playerSprite.x, playerSprite.y);
           const inRange = gDist < (stats.attackRange || 0) + 60;
           const curKey = e.anims?.currentAnim?.key;
           const isPlaying = e.anims?.isPlaying;
           if (typeof e.play === 'function') {
             if (inRange) {
-              if (curKey !== atkKey && this.scene.anims.exists(atkKey)) e.play(atkKey, true);
+              if (curKey !== atkKey && this.scene.anims.exists(atkKey)) {
+                if (atkTexKey && e.texture.key !== atkTexKey) e.setTexture(atkTexKey);
+                e.play(atkKey, true);
+              }
             } else {
-              if (!(curKey === atkKey && isPlaying) && curKey !== runKey && this.scene.anims.exists(runKey)) e.play(runKey, true);
+              if (!(curKey === atkKey && isPlaying) && curKey !== runKey && this.scene.anims.exists(runKey)) {
+                if (sprEntry && (sprEntry as any).textureKeyAtk && e.texture.key !== sprEntry.textureKey) e.setTexture(sprEntry.textureKey);
+                e.play(runKey, true);
+              }
             }
-            if (curKey === atkKey && !isPlaying && this.scene.anims.exists(runKey)) e.play(runKey, true);
+            if (curKey === atkKey && !isPlaying && this.scene.anims.exists(runKey)) {
+              if (sprEntry && (sprEntry as any).textureKeyAtk && e.texture.key !== sprEntry.textureKey) e.setTexture(sprEntry.textureKey);
+              e.play(runKey, true);
+            }
           }
         }
       }
@@ -594,6 +695,13 @@ export class EnemyManager {
        if (fill) { fill.x = bx; fill.y = by; fill.width = barW * hpFrac; }
        if (lbl) { lbl.x = e.x; lbl.y = by - 6; lbl.setText(`${stats.name}  ${Math.ceil(stats.hp)}/${stats.maxHp}`); }
     } else if (!isFrozen && !isStunned) {
+        // Телепорт если враг застрял слишком далеко от игрока
+        if (dist > 1800 && !stats.isBoss) {
+          const angle = Math.random() * Math.PI * 2;
+          const tpDist = 600 + Math.random() * 200;
+          e.x = Phaser.Math.Clamp(playerSprite.x + Math.cos(angle) * tpDist, 50, 3950);
+          e.y = Phaser.Math.Clamp(playerSprite.y + Math.sin(angle) * tpDist, 50, 3950);
+        }
         if (stats.behavior === 'CHASE') {
           this.scene.physics.moveToObject(e, playerSprite, stats.speed);
         } else if (stats.behavior === 'KITE') {
@@ -642,13 +750,26 @@ export class EnemyManager {
             const sy = e.y + Phaser.Math.Between(-60, 60);
             const minion: any = this.group.get(sx, sy);
             if (minion) {
+              // Миньоны тоже из пула — обязателен reset, иначе наследуют scale/frame/offset
+              this.resetPooledEnemySprite(minion, sx, sy);
               minion.setActive(true).setVisible(true).setAlpha(1);
-              minion.body.enable = true;
               const mt = ENEMY_TEMPLATES.MELEE_GRUNT;
-              if (minion.body) minion.body.setSize(mt.size * 2, mt.size * 2);
+              if (minion.body) {
+                minion.body.setSize(mt.size * 2, mt.size * 2, true);
+                minion.body.setOffset(0, 0);
+              }
               minion.setTint(0xaa44ff);
               minion.setData('enemyType', 'MELEE_GRUNT');
-              if (this.scene.textures.exists('enemy_grunt')) { minion.setTexture('enemy_grunt'); minion.setScale(0.14); if (this.scene.anims.exists('enemy_grunt_run')) minion.play('enemy_grunt_run', true); }
+              if (this.scene.textures.exists('enemy_grunt')) {
+                minion.setTexture('enemy_grunt');
+                minion.setFrame(0);
+                // Используем реестр, чтобы не было "рандомного" масштаба
+                const se = ENEMY_SPRITE_REGISTRY.MELEE_GRUNT;
+                minion.setScale(se?.scale ?? 0.15);
+                minion.setOrigin(0.5, 0.85);
+                const rk = `${se.textureKey}_run`;
+                if (this.scene.anims.exists(rk)) minion.play(rk, true);
+              }
               const ms = { ...this.waveState.config?.multipliers };
               minion.setData('stats', {
                 isBoss: false, isMinion: true, name: 'Minion', hp: mt.baseHP * (ms.hp || 1) * 0.5,
@@ -666,12 +787,31 @@ export class EnemyManager {
             }
           }
         } else if (stats.projectileSpeed > 0) {
-          const ep: any = this.projectiles.get(e.x, e.y);
-          if (ep) {
-            ep.setActive(true).setVisible(true);
-            ep.setSize(12, 12).setFillStyle(MAGIC_COLORS.ENEMY_PROJ);
-            ep.setData('damage', stats.damage);
-            this.scene.physics.moveToObject(ep, playerSprite, stats.projectileSpeed);
+          const eType = e.getData('enemyType');
+          if (eType === 'RANGED_ARCHER') {
+            // Стрела — спрайт с поворотом в сторону игрока
+            const arrow: any = this.arrowProjectiles.get(e.x, e.y);
+            if (arrow) {
+              arrow.setActive(true).setVisible(true);
+              arrow.setTexture('arrow');
+              arrow.setDepth(50);
+              const dx = playerSprite.x - e.x;
+              const dy = playerSprite.y - e.y;
+              const angle = Math.atan2(dy, dx);
+              arrow.setRotation(angle);
+              arrow.setData('damage', stats.damage);
+              const spd = stats.projectileSpeed;
+              arrow.body.enable = true;
+              arrow.body.setVelocity(Math.cos(angle) * spd, Math.sin(angle) * spd);
+            }
+          } else {
+            const ep: any = this.projectiles.get(e.x, e.y);
+            if (ep) {
+              ep.setActive(true).setVisible(true);
+              ep.setSize(12, 12).setFillStyle(MAGIC_COLORS.ENEMY_PROJ);
+              ep.setData('damage', stats.damage);
+              this.scene.physics.moveToObject(ep, playerSprite, stats.projectileSpeed);
+            }
           }
         }
         stats.lastAttack = time;
@@ -1265,8 +1405,11 @@ export class CombatManager {
         p.body.enable = true;
         p.body.setSize(22, 22);      // чуть больше визуала — компенсирует tunnel effect
         p.body.setOffset(-3, -3);
-        p.setData('target', target); // сохраняем цель для homing
-        this.scene.physics.moveToObject(p, target, speed);
+        // Направление фиксируется в момент выстрела — снаряд летит по прямой, без наведения
+        const dx = target.x - x;
+        const dy = target.y - y;
+        const dist = Math.hypot(dx, dy) || 1;
+        p.body.setVelocity((dx / dist) * speed, (dy / dist) * speed);
         return p;
     }
 
@@ -1288,15 +1431,7 @@ export class CombatManager {
                 p.body.enable = false;
                 return;
             }
-            // Лёгкий homing — подправляем курс к живой цели
-            const tgt = p.getData('target');
-            if (tgt?.active && p.body) {
-                const age = now - (p.getData('spawnTime') || 0);
-                if (age < 600) { // только первые 0.6с
-                    const spd = Math.hypot(p.body.velocity.x, p.body.velocity.y) || 820;
-                    this.scene.physics.moveToObject(p, tgt, spd);
-                }
-            }
+            // Снаряд летит строго по прямой — velocity задаётся один раз при спавне и не меняется
         });
 
         // Also clean enemy projectiles from EnemyManager

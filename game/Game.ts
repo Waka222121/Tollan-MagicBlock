@@ -76,10 +76,27 @@ export default class Game extends Phaser.Scene {
     // Row 0 (frames 0–3): run   |   Row 1 (frames 4–7): attack
     const _lk = new Set<string>();
     Object.values(ENEMY_SPRITE_REGISTRY).forEach(e => {
-      if (!e.assetPath || _lk.has(e.textureKey)) return;
-      _lk.add(e.textureKey);
-      this.load.spritesheet(e.textureKey, e.assetPath, { frameWidth: e.frameWidth, frameHeight: e.frameHeight, ...(e.spacing ? { spacing: e.spacing } : {}) });
+      if (e.assetPath && !_lk.has(e.textureKey)) {
+        _lk.add(e.textureKey);
+        this.load.spritesheet(e.textureKey, e.assetPath, { frameWidth: e.frameWidth, frameHeight: e.frameHeight, ...(e.spacing ? { spacing: e.spacing } : {}) });
+      }
+      // Отдельный шит для attack-анимации (если разделены во избежание GPU bleeding)
+      if (e.assetPathAtk && e.textureKeyAtk && !_lk.has(e.textureKeyAtk)) {
+        _lk.add(e.textureKeyAtk);
+        this.load.spritesheet(e.textureKeyAtk, e.assetPathAtk, { frameWidth: e.frameWidth, frameHeight: e.frameHeight });
+      }
     });
+    // Стрела для лучника — рисуем программно, не нужен внешний файл
+    const arrowGfx = this.make.graphics({ x: 0, y: 0, add: false });
+    arrowGfx.fillStyle(0x8B4513); // коричневое древко
+    arrowGfx.fillRect(0, 3, 28, 3);
+    arrowGfx.fillStyle(0xC0C0C0); // серебристый наконечник
+    arrowGfx.fillTriangle(28, 0, 28, 8, 38, 4);
+    arrowGfx.fillStyle(0xDDDDDD); // оперение
+    arrowGfx.fillTriangle(0, 1, 6, 4, 0, 7);
+    arrowGfx.generateTexture('arrow', 38, 9);
+    arrowGfx.destroy();
+
     this.load.on('loaderror', (file: any) => {
       console.warn('[Game] Failed to load:', file.key);
     });
@@ -131,9 +148,14 @@ export default class Game extends Phaser.Scene {
     Object.values(ENEMY_SPRITE_REGISTRY).forEach(cfg => {
       if (!this.textures.exists(cfg.textureKey)) return;
       if (!_ak.has(cfg.textureKey)) { _ak.add(cfg.textureKey); this.textures.get(cfg.textureKey).setFilter(Phaser.Textures.FilterMode.NEAREST); }
-      const rk = `${cfg.textureKey}_run`, ak = `${cfg.textureKey}_attack`;
+      // Run anim — всегда из textureKey
+      const rk = `${cfg.textureKey}_run`;
       if (!this.anims.exists(rk)) this.anims.create({ key: rk, frames: this.anims.generateFrameNumbers(cfg.textureKey, { start: cfg.anims.run.start, end: cfg.anims.run.end }), frameRate: cfg.anims.run.frameRate, repeat: -1 });
-      if (!this.anims.exists(ak)) this.anims.create({ key: ak, frames: this.anims.generateFrameNumbers(cfg.textureKey, { start: cfg.anims.attack.start, end: cfg.anims.attack.end }), frameRate: cfg.anims.attack.frameRate, repeat: 0 });
+      // Attack anim — из textureKeyAtk если шиты разделены, иначе из textureKey
+      const atkTexKey = (cfg as any).textureKeyAtk || cfg.textureKey;
+      const ak = `${cfg.textureKey}_attack`;
+      if (!_ak.has(atkTexKey) && this.textures.exists(atkTexKey)) { _ak.add(atkTexKey); this.textures.get(atkTexKey).setFilter(Phaser.Textures.FilterMode.NEAREST); }
+      if (!this.anims.exists(ak) && this.textures.exists(atkTexKey)) this.anims.create({ key: ak, frames: this.anims.generateFrameNumbers(atkTexKey, { start: cfg.anims.attack.start, end: cfg.anims.attack.end }), frameRate: cfg.anims.attack.frameRate, repeat: 0 });
     });
     // ─────────────────────────────────────────────────────────────────────
 
@@ -253,10 +275,29 @@ export default class Game extends Phaser.Scene {
   }
 
   setupCollisions() {
+    // ═══ DEBUG: log body positions every 2s ═══
+    this.time.addEvent({ delay: 2000, loop: true, callback: () => {
+      const enemies = this.enemyManager.allEnemies().filter((e:any) => e.active);
+      if (enemies.length > 0) {
+        const e = enemies[0];
+        const pb = this.playerManager.sprite.body as any;
+        console.log(`[DBG] Player body: x=${pb.x.toFixed(0)},y=${pb.y.toFixed(0)},w=${pb.width},h=${pb.height} enable=${pb.enable}`);
+        console.log(`[DBG] Enemy[0] body: x=${e.body?.x.toFixed(0)},y=${e.body?.y.toFixed(0)},w=${e.body?.width},h=${e.body?.height} enable=${e.body?.enable} active=${e.active}`);
+        console.log(`[DBG] Enemy[0] sprite: x=${e.x.toFixed(0)},y=${e.y.toFixed(0)} scale=${e.scaleX?.toFixed(3)}`);
+        const projs = this.combatManager.projectiles?.getChildren().filter((p:any) => p.active);
+        if (projs?.length > 0) {
+          const p = projs[0] as any;
+          console.log(`[DBG] Proj[0] body: x=${p.body?.x.toFixed(0)},y=${p.body?.y.toFixed(0)},w=${p.body?.width},h=${p.body?.height} enable=${p.body?.enable}`);
+        }
+      }
+    }});
+    // ═══ END DEBUG ═══
+
     this.physics.add.overlap(this.combatManager.projectiles, this.enemyManager.group, (proj: any, enemy: any) => {
         if (!proj.active || !enemy.active) return;
+        console.log('[DBG] OVERLAP proj->enemy FIRED'); // ← лог попадания
         const stats = enemy.getData('stats');
-        if (!stats) return;
+        if (!stats) { console.log('[DBG] stats is null!'); return; }
         
         const baseDmg = proj.getData('damage') || 25;
         let finalDmg = baseDmg * this.playerManager.stats.damageMultiplier;
@@ -366,6 +407,7 @@ export default class Game extends Phaser.Scene {
         if (this.playerManager.isInvincible) return; // i-frames при даше
         const stats = enemy.getData('stats');
         if (!stats) return;
+        console.log('[DBG] OVERLAP player<-enemy FIRED, dmg/frame=' + (stats.damage/60).toFixed(2));
         // Bomber doesn't melee damage — it explodes
         if (stats.behavior === 'BOMBER') return;
         
@@ -383,6 +425,16 @@ export default class Game extends Phaser.Scene {
         // shake removed
         ep.setActive(false).setVisible(false);
         ep.body.enable = false;
+    });
+
+    // Коллизия стрел лучника с игроком
+    this.physics.add.overlap(this.playerManager.sprite, this.enemyManager.arrowProjectiles, (p, arrow: any) => {
+        if (!arrow.active) return;
+        const rawDmg = arrow.getData('damage') || 10;
+        const finalDmg = Math.max(1, rawDmg - this.playerManager.stats.armor);
+        this.damagePlayer(finalDmg);
+        arrow.setActive(false).setVisible(false);
+        arrow.body.enable = false;
     });
 
     this.events.on('loot_collected', (data) => {
@@ -787,7 +839,7 @@ export default class Game extends Phaser.Scene {
                     const proj = Phaser.Math.Distance.Between(
                       px + Math.cos(angle) * dist, py + Math.sin(angle) * dist, e.x, e.y
                     );
-                    if (proj < (ab.width || 24)) {
+                    if (proj < (ab.width || 44)) {  // fix: было 24px — слишком узко, снаряды промахивались
                       const { dmg, crit } = calcDmg(baseDamage);
                       applyToEnemy(e, dmg, crit);
                       this.enemyManager.applyStatusEffect(e, 'STUNNED', { duration: ab.stunDuration || 800 });
