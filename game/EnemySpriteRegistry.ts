@@ -60,57 +60,47 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
   },
 
   TANK_BRUTE: {
-    enemyType:    'TANK_BRUTE',
-    label:        'Tank Brute',
-    textureKey:   'tank_brute_run',
-    textureKeyAtk:'tank_brute_attack',
-    assetPath:    'assets/tank_brute_run.png',
-    assetPathAtk: 'assets/tank_brute_attack.png',
-    frameWidth:   180,
-    frameHeight:  193,
-    scale:        0.80,
+    enemyType:   'TANK_BRUTE',
+    label:       'Tank Brute',
+    textureKey:  'tank_brute',
+    // Единый шит: 1456x720 → 4x2 кадра → frame 364x360
+    // row 0 (frames 0–3): run | row 1 (frames 4–7): attack
+    assetPath:   'assets/tank_brute.png',
+    frameWidth:  364,
+    frameHeight: 360,
+    scale:       0.50,  // visual: ~182x180px — крупный танк
     anims: {
-      run:    { start: 0, end: 3, frameRate: 6 },
-      attack: { start: 0, end: 3, frameRate: 8 },
+      run:    { start: 0, end: 3, frameRate: 7 },
+      attack: { start: 4, end: 7, frameRate: 8 },
     },
   },
 
   ELITE_DEMON: {
     enemyType:   'ELITE_DEMON',
     label:       'Elite Demon',
-    textureKey:  'enemy_grunt',
-    assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
-    scale:       0.15,
+    textureKey:  'elite_demon',
+    // Единый шит: 1408x768 → 4x2 кадра → frame 352x384
+    // row 0 (frames 0–3): run | row 1 (frames 4–7): attack
+    assetPath:   'assets/elite_demon.png',
+    frameWidth:  352,
+    frameHeight: 384,
+    scale:       0.28,  // visual: ~99x108px — чуть крупнее grunt
     anims: {
       run:    { start: 0, end: 3, frameRate: 8  },
       attack: { start: 4, end: 7, frameRate: 10 },
     },
   },
 
-  BOMBER: {
-    enemyType:   'BOMBER',
-    label:       'Void Bomber',
-    textureKey:  'enemy_grunt',
-    assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
-    scale:       0.10,  // visual: 50x70px — маленький и юркий
-    anims: {
-      run:    { start: 0, end: 3, frameRate: 10 },
-      attack: { start: 4, end: 7, frameRate: 12 },
-    },
-  },
-
   SUMMONER: {
     enemyType:   'SUMMONER',
     label:       'Shadow Summoner',
-    textureKey:  'enemy_grunt',
-    assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
-    scale:       0.13,
+    textureKey:  'summoner',
+    // Единый шит: 1408x768 → 4x2 кадра → frame 352x384
+    // row 0 (frames 0–3): walk | row 1 (frames 4–7): summon/cast
+    assetPath:   'assets/summoner.png',
+    frameWidth:  352,
+    frameHeight: 384,
+    scale:       0.26,  // visual: ~92x100px — чуть меньше grunt
     anims: {
       run:    { start: 0, end: 3, frameRate: 6  },
       attack: { start: 4, end: 7, frameRate: 8  },

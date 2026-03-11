@@ -14,6 +14,8 @@ const GameUI = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  if (!player) return null;
+
   const xpPercent = player?.nextLevelXp > 0 ? (player.xp / player.nextLevelXp) * 100 : 0;
   const hpPercent = player?.maxHp > 0 ? (player.hp / player.maxHp) * 100 : 0;
 
@@ -65,7 +67,7 @@ const GameUI = ({
                   </div>
                   <div className="w-24 h-0.5 bg-white/10 mt-1 overflow-hidden rounded-full">
                     <div className="h-full rounded-full" key={combo}
-                      style={{ background: comboCol, animation: 'comboDecay 3s linear forwards' }}
+                      style={{ background: comboCol, animation: `comboDecay ${comboTimeoutMs / 1000}s linear forwards` }}
                     />
                   </div>
                 </div>

@@ -246,18 +246,6 @@ export const ENEMY_TEMPLATES = {
     attackRate: 1500,
     color: 0xef4444
   },
-  BOMBER: {
-    name: "Void Bomber",
-    baseHP: 45,
-    baseDamage: 60,
-    speed: 170,
-    size: 18,
-    xpReward: 15,
-    goldReward: 6,
-    behavior: 'BOMBER',
-    explosionRadius: 130,
-    color: 0xff8800
-  },
   SUMMONER: {
     name: "Shadow Summoner",
     baseHP: 80,
@@ -367,7 +355,6 @@ export const GAME_BALANCE = {
       const bossKey = isBossWave ? bossOrder[Math.floor(wave / 5 - 1) % bossOrder.length] : null;
 
       // New enemies unlock progressively
-      const hasBomber   = wave >= 2;
       const hasSummoner = wave >= 4;
       const hasShielder = wave >= 5;
 
@@ -380,7 +367,6 @@ export const GAME_BALANCE = {
           RANGED_ARCHER: Math.min(0.30, 0.08 + wave * 0.03),
           TANK_BRUTE:    wave >= 3 ? Math.min(0.20, (wave - 2) * 0.04) : 0,
           ELITE_DEMON:   wave >= 6 ? Math.min(0.20, (wave - 5) * 0.04) : 0,
-          BOMBER:        hasBomber   ? Math.min(0.20, (wave - 1) * 0.03) : 0,
           SUMMONER:      hasSummoner ? Math.min(0.15, (wave - 3) * 0.025) : 0,
           SHIELDER:      hasShielder ? Math.min(0.15, (wave - 4) * 0.025) : 0,
         },

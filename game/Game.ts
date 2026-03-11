@@ -408,8 +408,6 @@ export default class Game extends Phaser.Scene {
         const stats = enemy.getData('stats');
         if (!stats) return;
         console.log('[DBG] OVERLAP player<-enemy FIRED, dmg/frame=' + (stats.damage/60).toFixed(2));
-        // Bomber doesn't melee damage — it explodes
-        if (stats.behavior === 'BOMBER') return;
         
         const rawDmgPerFrame = stats.damage / 60;
         const armorPerFrame = this.playerManager.stats.armor / 60;

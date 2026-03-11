@@ -714,13 +714,6 @@ export class EnemyManager {
           } else {
             e.body.setVelocity(0);
           }
-        } else if (stats.behavior === 'BOMBER') {
-          // Rushes straight at player, ignoring everything
-          this.scene.physics.moveToObject(e, playerSprite, stats.speed);
-          // Explodes when touching player
-          if (dist < 35) {
-            this.triggerBomberExplosion(e, stats, playerSprite);
-          }
         } else if (stats.behavior === 'SUMMONER') {
           // Tries to stay at max range
           const keepRange = stats.attackRange * 0.9;
@@ -1093,33 +1086,6 @@ export class EnemyManager {
     // If enemy died from reaction damage — will be caught by hp≤0 check in main loop
   }
 
-  // Взрыв юнита‑бомбера: урон по игроку и окружающим врагам
-  triggerBomberExplosion(bomber, stats, playerSprite) {
-    const radius = stats.explosionRadius || 130;
-    // VFX
-    const circle = (this.scene.add as any).ellipse(bomber.x, bomber.y, radius * 2, radius * 2, 0xff8800, 0.6).setDepth(180);
-    this.scene.tweens.add({ targets: circle, scaleX: 1.5, scaleY: 1.5, alpha: 0, duration: 500, onComplete: () => circle.destroy() });
-    // shake removed
-
-    // Damage player if in radius
-    if (Phaser.Math.Distance.Between(bomber.x, bomber.y, playerSprite.x, playerSprite.y) < radius) {
-      this.scene.events.emit('player_damaged', stats.damage);
-    }
-
-    // Damage other nearby enemies (chain explosion)
-    this.allEnemies().forEach((e: any) => {
-      if (!e.active || e === bomber) return;
-      if (Phaser.Math.Distance.Between(bomber.x, bomber.y, e.x, e.y) < radius * 0.7) {
-        const s = e.getData('stats');
-        if (s) { s.hp -= stats.damage * 0.5; }
-      }
-    });
-
-    bomber.setActive(false).setVisible(false);
-    bomber.body.enable = false;
-    const bGSpr = bomber.getData('goblinSprite');
-    if (bGSpr) bGSpr.setVisible(false);
-  }
 
   // Общий ИИ босса: фазы по HP и выбор моментов для способностей
   handleBossLogic(boss, time, delta, player) {

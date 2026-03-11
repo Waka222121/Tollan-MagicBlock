@@ -23,7 +23,7 @@ const ChatModule = () => {
 
     try {
       const ai = getAIClient();
-      const modelName = useThinking ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview';
+      const modelName = useThinking ? 'gemini-2.5-pro-preview' : 'gemini-2.5-flash';
       
       let latLng = null;
       if (userMsg.toLowerCase().includes('near me') || userMsg.toLowerCase().includes('restaurant') || userMsg.toLowerCase().includes('where')) {

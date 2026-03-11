@@ -27,7 +27,7 @@ const MediaModule = () => {
       const base64 = await blobToBase64(file);
       
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-pro-preview',
         contents: {
           parts: [
             { inlineData: { data: base64, mimeType: file.type } },

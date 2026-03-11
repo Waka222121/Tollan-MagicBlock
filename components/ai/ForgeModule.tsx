@@ -94,7 +94,7 @@ const ForgeModule = () => {
           }
         } else {
           const response = await ai.models.generateContent({
-            model: 'gemini-3-pro-image-preview',
+            model: 'gemini-2.0-flash-preview-image-generation',
             contents: { parts: [{ text: prompt }] },
             config: {
               imageConfig: {

@@ -34,9 +34,9 @@ const AITerminal = ({ onClose }) => {
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex">
         {/* Sidebar Tabs */}
-        <div className="w-64 border-r border-white/10 bg-black/50 p-4 space-y-2">
+        <div className="w-64 border-r border-white/10 bg-black/50 p-4 flex flex-col gap-2">
           {TABS.map((tab) => (
             <button
               key={tab.id}
