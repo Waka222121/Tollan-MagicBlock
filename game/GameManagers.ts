@@ -1231,35 +1231,62 @@ export class EnemyManager {
            break;
 
         case 'CHAIN_LIGHTNING': {
-           // Strikes player with a visible projectile then bounces to nearby enemies
+           // Strikes player with a visible fast red bolt; keeps instant-damage fallback for reliability
            bossData.state = 'CASTING';
            this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
 
-           // Spawn red lightning bolt from enemy projectile pool
-           const bolt: any = this.projectiles.get(boss.x, boss.y);
+           const dmg = stats.damage * 0.8;
+           const startX = boss.x;
+           const startY = boss.y;
+           const targetX = player.x;
+           const targetY = player.y;
+
+           const bolt: any = this.projectiles.get(startX, startY);
            if (bolt) {
              bolt.setActive(true).setVisible(true);
-             bolt.body.reset(boss.x, boss.y);
+             bolt.body.reset(startX, startY);
              bolt.body.enable = true;
-             bolt.setDisplaySize(16, 16);
+             bolt.body.setVelocity(0, 0);
+             // Important for Shape projectiles: use setSize + fill style (not display size)
+             if (bolt.setSize) bolt.setSize(18, 18);
              if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
              else if (bolt.setTint) bolt.setTint(0xff2200);
-             bolt.setData('damage', stats.damage * 0.8);
-             const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
-             this.scene.physics.velocityFromAngle(
-               Phaser.Math.RadToDeg(angle), 480,
-               bolt.body.velocity
-             );
+             bolt.setDepth?.(130);
+             bolt.setData('damage', dmg);
+             bolt.setData('poison', false);
+
+             this.scene.physics.moveToObject(bolt, player, 520);
+
+             // Safety: if overlap misses, apply direct hit once and despawn the bolt
+             this.scene.time.delayedCall(220, () => {
+               if (!bolt.active) return;
+               this.scene.events.emit('player_damaged', dmg);
+               bolt.setActive(false).setVisible(false);
+               if (bolt.body) bolt.body.enable = false;
+             });
            } else {
-             // Fallback: instant damage
-             this.scene.events.emit('player_damaged', stats.damage * 0.8);
+             // Fallback when projectile pool is exhausted
+             this.scene.events.emit('player_damaged', dmg);
            }
 
-           // Visual arc
-           const arc = (this.scene.add as any).graphics().setDepth(200);
-           arc.lineStyle(3, 0xff2200, 0.8);
-           arc.lineBetween(boss.x, boss.y, player.x, player.y);
-           this.scene.time.delayedCall(200, () => { arc.destroy(); });
+           // Visual lightning beam (jagged + impact flash)
+           const arc = (this.scene.add as any).graphics().setDepth(210);
+           arc.lineStyle(3, 0xff2200, 0.95);
+           arc.beginPath();
+           arc.moveTo(startX, startY);
+           const segments = 6;
+           for (let i = 1; i < segments; i++) {
+             const t = i / segments;
+             const ix = Phaser.Math.Linear(startX, targetX, t) + Phaser.Math.Between(-16, 16);
+             const iy = Phaser.Math.Linear(startY, targetY, t) + Phaser.Math.Between(-16, 16);
+             arc.lineTo(ix, iy);
+           }
+           arc.lineTo(targetX, targetY);
+           arc.strokePath();
+
+           const impact = (this.scene.add as any).ellipse(targetX, targetY, 28, 28, 0xff2200, 0.45).setDepth(211);
+           this.scene.tweens.add({ targets: impact, alpha: 0, scaleX: 2.2, scaleY: 2.2, duration: 220, onComplete: () => impact.destroy() });
+           this.scene.tweens.add({ targets: arc, alpha: 0, duration: 260, onComplete: () => arc.destroy() });
 
            // Chain to nearby minions (friendly fire)
            this.scene.time.delayedCall(400, () => {
@@ -1288,15 +1315,32 @@ export class EnemyManager {
         }
 
         case 'TELEPORT':
-           // Teleports behind the player
+           // Teleports behind the player with telegraph + short recovery so player can react
            bossData.state = 'TELEPORTING';
-           this.scene.tweens.add({ targets: boss, alpha: 0, duration: 300, onComplete: () => {
+           boss.body?.setVelocity?.(0, 0);
+
+           const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y) + Math.PI;
+           const destX = Phaser.Math.Clamp(player.x + Math.cos(angle) * 170, 80, WORLD_SIZE - 80);
+           const destY = Phaser.Math.Clamp(player.y + Math.sin(angle) * 170, 80, WORLD_SIZE - 80);
+
+           const marker = (this.scene.add as any).ellipse(destX, destY, 44, 44, 0xff3355, 0.12)
+             .setDepth(140)
+             .setStrokeStyle(2, 0xff3355, 0.8);
+           this.scene.tweens.add({ targets: marker, alpha: 0.9, scaleX: 1.8, scaleY: 1.8, duration: 260, yoyo: true, onComplete: () => marker.destroy() });
+
+           this.scene.tweens.add({ targets: boss, alpha: 0, duration: 260, onComplete: () => {
              if (!boss.active) return;
-             const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y) + Math.PI;
-             boss.x = Phaser.Math.Clamp(player.x + Math.cos(angle) * 120, 80, WORLD_SIZE - 80);
-             boss.y = Phaser.Math.Clamp(player.y + Math.sin(angle) * 120, 80, WORLD_SIZE - 80);
-             this.scene.tweens.add({ targets: boss, alpha: 1, duration: 300 });
-             bossData.state = 'IDLE';
+             boss.x = destX;
+             boss.y = destY;
+             this.scene.tweens.add({ targets: boss, alpha: 1, duration: 260 });
+
+             // Give player a brief escape window after teleport before contact damage can tick again
+             boss.setData('lastContactDamageAt', this.scene.time.now + 450);
+             bossData.state = 'RECOVERING';
+             this.scene.time.delayedCall(520, () => {
+               if (!boss.active) return;
+               bossData.state = 'IDLE';
+             });
            }});
            bossData.timers['TELEPORT'] = 9000;
            break;
