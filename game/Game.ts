@@ -30,6 +30,7 @@ export default class Game extends Phaser.Scene {
   comboText: any;
   _lastSyncTime: number;
   _lastRegenTime: number;
+  contactDamageTickMs: number;
 
   load: Phaser.Loader.LoaderPlugin;
   textures: Phaser.Textures.TextureManager;
@@ -48,6 +49,7 @@ export default class Game extends Phaser.Scene {
     this.comboLevel   = 0;
     this.maxCombo     = 0;
     this._lastRegenTime = 0;
+    this.contactDamageTickMs = 200;
   }
 
   init() {
@@ -60,6 +62,7 @@ export default class Game extends Phaser.Scene {
     this.comboTimer   = null;
     this.comboText    = null;
     this._lastRegenTime = 0;
+    this.contactDamageTickMs = 200;
   }
 
   preload() {
@@ -213,6 +216,7 @@ export default class Game extends Phaser.Scene {
         this.gameTimer += delta;
         this.playerManager.update(time, delta);
         this.enemyManager.update(time, delta, this.playerManager.sprite);
+        this.applyContactDamageFallback(time);
         this.lootSystem.update(delta, this.playerManager);
         this.combatManager.update();   // clean up off-screen projectiles
         this.processAbilities(time);
@@ -428,26 +432,11 @@ export default class Game extends Phaser.Scene {
     });
 
     this.physics.add.overlap(this.playerManager.sprite, this.enemyManager.bossGroup, (p, enemy: any) => {
-        if (!enemy.active) return;
-        if (this.playerManager.isInvincible) return;
-        const stats = enemy.getData('stats');
-        if (!stats) return;
-        const rawDmgPerFrame = stats.damage / 60;
-        const finalDmg = Math.max(0.05, rawDmgPerFrame - this.playerManager.stats.armor / 60);
-        this.damagePlayer(finalDmg);
+        this.applyEnemyContactDamage(enemy, this.time.now);
     });
 
     this.physics.add.overlap(this.playerManager.sprite, this.enemyManager.group, (p, enemy: any) => {
-        if (!enemy.active) return;
-        if (this.playerManager.isInvincible) return; // i-frames при даше
-        const stats = enemy.getData('stats');
-        if (!stats) return;
-        console.log('[DBG] OVERLAP player<-enemy FIRED, dmg/frame=' + (stats.damage/60).toFixed(2));
-        
-        const rawDmgPerFrame = stats.damage / 60;
-        const armorPerFrame = this.playerManager.stats.armor / 60;
-        const finalDmg = Math.max(0.05, rawDmgPerFrame - armorPerFrame);
-        this.damagePlayer(finalDmg);
+        this.applyEnemyContactDamage(enemy, this.time.now);
     });
 
     this.physics.add.overlap(this.playerManager.sprite, this.enemyManager.projectiles, (p, ep: any) => {
@@ -486,6 +475,49 @@ export default class Game extends Phaser.Scene {
         if (!enemy.active) return;
         this.onEnemyKilled(enemy);
     });
+  }
+
+  applyEnemyContactDamage(enemy: any, time: number) {
+    if (!enemy?.active) return;
+    if (this.playerManager.isInvincible) return;
+    if (this.stateMachine.is('GAME_OVER')) return;
+
+    const stats = enemy.getData('stats');
+    if (!stats) return;
+
+    const lastHitAt = enemy.getData('lastContactDamageAt') || 0;
+    if (time - lastHitAt < this.contactDamageTickMs) return;
+
+    const rawTickDamage = stats.damage * (this.contactDamageTickMs / 1000);
+    const finalDamage = Math.max(1, rawTickDamage - this.playerManager.stats.armor);
+    enemy.setData('lastContactDamageAt', time);
+    this.damagePlayer(finalDamage);
+  }
+
+  applyContactDamageFallback(time: number) {
+    if (this.playerManager.isInvincible) return;
+
+    const player = this.playerManager.sprite as any;
+    const pBody = player?.body as any;
+    if (!player?.active || !pBody?.enable) return;
+
+    const px = player.x;
+    const py = player.y;
+    const pRadius = Math.max(pBody.width, pBody.height) * 0.5;
+
+    for (const enemy of this.enemyManager.allEnemies()) {
+      if (!enemy?.active) continue;
+      const eBody = enemy.body as any;
+      if (!eBody?.enable) continue;
+
+      const ex = enemy.x;
+      const ey = enemy.y;
+      const eRadius = Math.max(eBody.width, eBody.height) * 0.45;
+      const contactRange = pRadius + eRadius;
+      if (Phaser.Math.Distance.Between(px, py, ex, ey) <= contactRange) {
+        this.applyEnemyContactDamage(enemy, time);
+      }
+    }
   }
 
   update(time, delta) {
