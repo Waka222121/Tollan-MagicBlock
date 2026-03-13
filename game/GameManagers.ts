@@ -1231,33 +1231,42 @@ export class EnemyManager {
            break;
 
         case 'CHAIN_LIGHTNING': {
-           // Strikes player with a visible projectile then bounces to nearby enemies
+           // Strikes player with a visible fast red bolt; keeps instant-damage fallback for reliability
            bossData.state = 'CASTING';
            this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
 
-           // Spawn red lightning bolt from enemy projectile pool
+           const dmg = stats.damage * 0.8;
            const bolt: any = this.projectiles.get(boss.x, boss.y);
            if (bolt) {
              bolt.setActive(true).setVisible(true);
              bolt.body.reset(boss.x, boss.y);
              bolt.body.enable = true;
-             bolt.setDisplaySize(16, 16);
+             bolt.body.setVelocity(0, 0);
+             // Important for Shape projectiles: use setSize + fill style (not display size)
+             if (bolt.setSize) bolt.setSize(18, 18);
              if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
              else if (bolt.setTint) bolt.setTint(0xff2200);
-             bolt.setData('damage', stats.damage * 0.8);
-             const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
-             this.scene.physics.velocityFromAngle(
-               Phaser.Math.RadToDeg(angle), 480,
-               bolt.body.velocity
-             );
+             bolt.setDepth?.(130);
+             bolt.setData('damage', dmg);
+             bolt.setData('poison', false);
+
+             this.scene.physics.moveToObject(bolt, player, 520);
+
+             // Safety: if overlap misses, apply direct hit once and despawn the bolt
+             this.scene.time.delayedCall(220, () => {
+               if (!bolt.active) return;
+               this.scene.events.emit('player_damaged', dmg);
+               bolt.setActive(false).setVisible(false);
+               if (bolt.body) bolt.body.enable = false;
+             });
            } else {
-             // Fallback: instant damage
-             this.scene.events.emit('player_damaged', stats.damage * 0.8);
+             // Fallback when projectile pool is exhausted
+             this.scene.events.emit('player_damaged', dmg);
            }
 
            // Visual arc
            const arc = (this.scene.add as any).graphics().setDepth(200);
-           arc.lineStyle(3, 0xff2200, 0.8);
+           arc.lineStyle(3, 0xff2200, 0.85);
            arc.lineBetween(boss.x, boss.y, player.x, player.y);
            this.scene.time.delayedCall(200, () => { arc.destroy(); });
 
