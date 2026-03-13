@@ -1236,12 +1236,16 @@ export class EnemyManager {
            this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
 
            const dmg = stats.damage * 0.8;
+ codex/fix-main-character-damage-issue-znn2cf
            const startX = boss.x;
            const startY = boss.y;
            const targetX = player.x;
            const targetY = player.y;
 
            const bolt: any = this.projectiles.get(startX, startY);
+
+           const bolt: any = this.projectiles.get(boss.x, boss.y);
+ main
            if (bolt) {
              bolt.setActive(true).setVisible(true);
              bolt.body.reset(startX, startY);
@@ -1267,6 +1271,7 @@ export class EnemyManager {
            } else {
              // Fallback when projectile pool is exhausted
              this.scene.events.emit('player_damaged', dmg);
+ codex/fix-main-character-damage-issue-znn2cf
            }
 
            // Visual lightning beam (jagged + impact flash)
@@ -1280,13 +1285,23 @@ export class EnemyManager {
              const ix = Phaser.Math.Linear(startX, targetX, t) + Phaser.Math.Between(-16, 16);
              const iy = Phaser.Math.Linear(startY, targetY, t) + Phaser.Math.Between(-16, 16);
              arc.lineTo(ix, iy);
+
+ main
            }
            arc.lineTo(targetX, targetY);
            arc.strokePath();
 
+ codex/fix-main-character-damage-issue-znn2cf
            const impact = (this.scene.add as any).ellipse(targetX, targetY, 28, 28, 0xff2200, 0.45).setDepth(211);
            this.scene.tweens.add({ targets: impact, alpha: 0, scaleX: 2.2, scaleY: 2.2, duration: 220, onComplete: () => impact.destroy() });
            this.scene.tweens.add({ targets: arc, alpha: 0, duration: 260, onComplete: () => arc.destroy() });
+
+           // Visual arc
+           const arc = (this.scene.add as any).graphics().setDepth(200);
+           arc.lineStyle(3, 0xff2200, 0.85);
+           arc.lineBetween(boss.x, boss.y, player.x, player.y);
+           this.scene.time.delayedCall(200, () => { arc.destroy(); });
+ main
 
            // Chain to nearby minions (friendly fire)
            this.scene.time.delayedCall(400, () => {
