@@ -90,7 +90,7 @@ export default class Game extends Phaser.Scene {
       }
     });
     // Стрела для лучника — рисуем программно, не нужен внешний файл
-    const arrowGfx = this.make.graphics({ x: 0, y: 0, add: false });
+    const arrowGfx = this.make.graphics({ x: 0, y: 0 });
     arrowGfx.fillStyle(0x8B4513); // коричневое древко
     arrowGfx.fillRect(0, 3, 28, 3);
     arrowGfx.fillStyle(0xC0C0C0); // серебристый наконечник
@@ -126,7 +126,7 @@ export default class Game extends Phaser.Scene {
 
     // Generate wizard_static fallback texture inline
     if (!this.textures.exists('wizard_static')) {
-      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      const g = this.make.graphics({ x: 0, y: 0 });
       g.fillStyle(0x1a1a2e); g.fillRect(0, 0, 32, 40);
       g.fillStyle(0x9b59b6); g.fillRect(8, 10, 16, 14);
       g.fillStyle(0x7d3c98); g.fillTriangle(16, 0, 6, 10, 26, 10);
