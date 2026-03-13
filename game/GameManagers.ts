@@ -39,7 +39,8 @@ export class PlayerManager {
     if (isSheet) {
       // frame 200x280, scale 0.4 -> 80x112px on screen
       this.sprite.setScale(0.4);
-      this.sprite.body.setSize(50, 70, true);  // center=true автоматически центрирует
+      this.sprite.body.setSize(120, 160, false);
+      this.sprite.body.setOffset(40, 60);
     } else {
       // static fallback
       this.sprite.setScale(0.12);
@@ -301,7 +302,8 @@ export class EnemyManager {
     });
     this.projectiles = this.scene.physics.add.group({
       classType: Phaser.GameObjects.Ellipse,
-      maxSize: 100
+      maxSize: 100,
+      runChildUpdate: false
     });
     // Отдельный пул стрел для лучника
     this.arrowProjectiles = this.scene.physics.add.group({
@@ -433,15 +435,32 @@ export class EnemyManager {
 
     // ── Текстура из реестра (обычные враги) или цвет босса ───────────────
     if (isBoss) {
-      // Босс — цветной квадрат пока нет спрайта
+      // Босс — спрайт если есть, иначе цветной квадрат
       const bossTemplate = BOSS_TEMPLATES[bossKey] || template;
       const bossSize = bossTemplate.size * 2;
-      enemy.setTexture('__DEFAULT');
-      enemy.setDisplaySize(bossSize, bossSize);
-      enemy.setOrigin(0.5, 1.0);
-      enemy.setDepth(10);
-      enemy.setAlpha(1);
-      enemy.setTint(bossTemplate.color || 0xff0000);
+      const bossTextureKey = bossKey.toLowerCase();
+      const bossScales: Record<string, number> = { serinax: 0.35, vorgath: 0.28, nexarion: 0.30 };
+      const bossOriginY: Record<string, number> = { serinax: 1.0, vorgath: 1.0, nexarion: 0.88 };
+      const bossScale = bossScales[bossTextureKey] ?? 0.35;
+      const bossOrigin = bossOriginY[bossTextureKey] ?? 1.0;
+      if (this.scene.textures.exists(bossTextureKey)) {
+        enemy.setTexture(bossTextureKey);
+        enemy.setFrame(0);
+        enemy.setScale(bossScale);
+        enemy.setOrigin(0.5, bossOrigin);
+        enemy.setDepth(10);
+        enemy.setAlpha(1);
+        enemy.clearTint();
+        const runAnim = `${bossTextureKey}_run`;
+        if (this.scene.anims.exists(runAnim)) enemy.play(runAnim, true);
+      } else {
+        enemy.setTexture('__DEFAULT');
+        enemy.setDisplaySize(bossSize, bossSize);
+        enemy.setOrigin(0.5, 1.0);
+        enemy.setDepth(10);
+        enemy.setAlpha(1);
+        enemy.setTint(bossTemplate.color || 0xff0000);
+      }
     } else {
       const sprEntry = ENEMY_SPRITE_REGISTRY[type];
       if (sprEntry && this.scene.textures.exists(sprEntry.textureKey)) {
@@ -484,6 +503,11 @@ export class EnemyManager {
         // ВАЖНО: setScale вызывается здесь, после body.setSize — иначе пул объектов
         // может передать спрайт с чужим scale, что ломает хитбокс и визуал.
         enemy.setScale(sprEntry.scale);
+        // TANK_BRUTE gets smaller from wave 10 onward
+        if (type === 'TANK_BRUTE' && this.waveState.currentWave >= 10) {
+          const reduction = Math.min(0.20, (this.waveState.currentWave - 9) * 0.02);
+          enemy.setScale(sprEntry.scale - reduction);
+        }
         const nativeBodySize = diameter / sprEntry.scale;
         const offsetX = (sprEntry.frameWidth  - nativeBodySize) / 2;
         const offsetY = (sprEntry.frameHeight - nativeBodySize) / 2;
@@ -678,7 +702,7 @@ export class EnemyManager {
        // Draw boss HP bar above the boss
        const barW = 120, barH = 8;
        const bx = e.x - barW / 2;
-       const by = e.y - e.height / 2 - 20;
+       const by = e.y - ((e.originY ?? 1.0) * e.displayHeight) - 12;
        const hpFrac = Math.max(0, stats.hp / stats.maxHp);
        if (!e.getData('hpBarBg')) {
          const bg = this.scene.add.rectangle(0, 0, barW, barH, 0x330000).setDepth(500).setOrigin(0, 0.5);
@@ -1122,6 +1146,17 @@ export class EnemyManager {
      const stats = boss.getData('stats');
      if (!bossData) return;
 
+     // Play attack anim if boss has sprite
+     const bossTextureKey = boss.texture?.key;
+     const atkAnim = bossTextureKey ? `${bossTextureKey}_attack` : null;
+     if (atkAnim && this.scene.anims.exists(atkAnim)) {
+       boss.play(atkAnim, true);
+       boss.once(`animationcomplete-${atkAnim}`, () => {
+         const runAnim = `${bossTextureKey}_run`;
+         if (boss.active && this.scene.anims.exists(runAnim)) boss.play(runAnim, true);
+       });
+     }
+
      switch(ability) {
         case 'CHARGE':
            bossData.state = 'CHARGING';
@@ -1195,22 +1230,62 @@ export class EnemyManager {
            bossData.timers['POISON_NOVA'] = 6000;
            break;
 
-        case 'CHAIN_LIGHTNING':
-           // Strikes player and bounces to nearby enemies (friendly fire!)
+        case 'CHAIN_LIGHTNING': {
+           // Strikes player with a visible projectile then bounces to nearby enemies
            bossData.state = 'CASTING';
            this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
-           this.scene.events.emit('player_damaged', stats.damage * 0.8);
+
+           // Spawn red lightning bolt from enemy projectile pool
+           const bolt: any = this.projectiles.get(boss.x, boss.y);
+           if (bolt) {
+             bolt.setActive(true).setVisible(true);
+             bolt.body.reset(boss.x, boss.y);
+             bolt.body.enable = true;
+             bolt.setDisplaySize(16, 16);
+             if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
+             else if (bolt.setTint) bolt.setTint(0xff2200);
+             bolt.setData('damage', stats.damage * 0.8);
+             const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
+             this.scene.physics.velocityFromAngle(
+               Phaser.Math.RadToDeg(angle), 480,
+               bolt.body.velocity
+             );
+           } else {
+             // Fallback: instant damage
+             this.scene.events.emit('player_damaged', stats.damage * 0.8);
+           }
+
            // Visual arc
            const arc = (this.scene.add as any).graphics().setDepth(200);
-           arc.lineStyle(3, 0x00ddff, 1);
+           arc.lineStyle(3, 0xff2200, 0.8);
            arc.lineBetween(boss.x, boss.y, player.x, player.y);
-           // shake removed
            this.scene.time.delayedCall(200, () => { arc.destroy(); });
+
+           // Chain to nearby minions (friendly fire)
+           this.scene.time.delayedCall(400, () => {
+             if (!boss.active) return;
+             const nearby = this.group.getChildren().filter((e: any) =>
+               e.active && Phaser.Math.Distance.Between(boss.x, boss.y, e.x, e.y) < 280
+             );
+             nearby.slice(0, 3).forEach((e: any, i: number) => {
+               this.scene.time.delayedCall(i * 80, () => {
+                 if (!e.active) return;
+                 const chainArc = (this.scene.add as any).graphics().setDepth(200);
+                 chainArc.lineStyle(2, 0xff4400, 0.7);
+                 chainArc.lineBetween(player.x, player.y, e.x, e.y);
+                 this.scene.time.delayedCall(150, () => chainArc.destroy());
+                 const eStats = e.getData('stats');
+                 if (eStats) eStats.hp -= stats.damage * 0.4;
+               });
+             });
+           });
+
            this.scene.time.delayedCall(300, () => {
              if (boss.active) { this.clearTintEnemy(boss); bossData.state = 'IDLE'; }
            });
            bossData.timers['CHAIN_LIGHTNING'] = 4500;
            break;
+        }
 
         case 'TELEPORT':
            // Teleports behind the player
@@ -1364,14 +1439,14 @@ export class CombatManager {
         if (!p) return null;
         
         p.setActive(true).setVisible(true).setDepth(150);
-        p.setSize(16, 16).setFillStyle(color);
+        p.setSize(18, 18).setFillStyle(color);
         p.setData('damage', damage);
         p.setData('spawnTime', this.scene.time.now);
-        p.body.reset(x, y);          // сбрасываем позицию и скорость из пула
+        p.body.reset(x, y);
         p.body.enable = true;
-        p.body.setSize(22, 22);      // чуть больше визуала — компенсирует tunnel effect
-        p.body.setOffset(-3, -3);
-        // Направление фиксируется в момент выстрела — снаряд летит по прямой, без наведения
+        // Большой хитбокс — компенсирует Shape physics desync
+        p.body.setSize(36, 36);
+        p.body.setOffset(-9, -9);
         const dx = target.x - x;
         const dy = target.y - y;
         const dist = Math.hypot(dx, dy) || 1;

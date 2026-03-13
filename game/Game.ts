@@ -70,8 +70,8 @@ export default class Game extends Phaser.Scene {
       frameWidth: 200,
       frameHeight: 280
     });
-    // Fallback static sprite if sheet not found
-    this.load.image('wizard_static', 'https://i.ibb.co/LkhK9L9/purple-wizard.png');
+    // Fallback static sprite — generated inline, no external URL needed
+    // (created in create() if wizard sheet fails to load)
     // Goblin spritesheet — 4 cols × 2 rows, 308×432 px per frame
     // Row 0 (frames 0–3): run   |   Row 1 (frames 4–7): attack
     const _lk = new Set<string>();
@@ -97,6 +97,11 @@ export default class Game extends Phaser.Scene {
     arrowGfx.generateTexture('arrow', 38, 9);
     arrowGfx.destroy();
 
+    // Boss spritesheets
+    this.load.spritesheet('serinax', 'assets/serinax.png', { frameWidth: 563, frameHeight: 614 });
+    this.load.spritesheet('vorgath', 'assets/vorgath.png', { frameWidth: 800, frameHeight: 872 });
+    this.load.spritesheet('nexarion', 'assets/nexarion.png', { frameWidth: 563, frameHeight: 614 });
+
     this.load.on('loaderror', (file: any) => {
       console.warn('[Game] Failed to load:', file.key);
     });
@@ -115,6 +120,17 @@ export default class Game extends Phaser.Scene {
 
     this.combatManager = new CombatManager(this);
     this.combatManager.create();
+
+    // Generate wizard_static fallback texture inline
+    if (!this.textures.exists('wizard_static')) {
+      const g = this.make.graphics({ x: 0, y: 0, add: false });
+      g.fillStyle(0x1a1a2e); g.fillRect(0, 0, 32, 40);
+      g.fillStyle(0x9b59b6); g.fillRect(8, 10, 16, 14);
+      g.fillStyle(0x7d3c98); g.fillTriangle(16, 0, 6, 10, 26, 10);
+      g.fillStyle(0xf0d090); g.fillRect(10, 12, 12, 10);
+      g.generateTexture('wizard_static', 32, 40);
+      g.destroy();
+    }
 
     // Выбираем ключ спрайта: анимированный или статичный фоллбек
     const sheetOK = this.textures.exists('wizard') && this.textures.get('wizard').frameTotal >= 12;
@@ -159,6 +175,24 @@ export default class Game extends Phaser.Scene {
     });
     // ─────────────────────────────────────────────────────────────────────
 
+    // ── Boss animations ──────────────────────────────────────────────────
+    if (this.textures.exists('serinax')) {
+      this.textures.get('serinax').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('serinax_run'))    this.anims.create({ key: 'serinax_run',    frames: this.anims.generateFrameNumbers('serinax', { start: 0, end: 3 }), frameRate: 6, repeat: -1 });
+      if (!this.anims.exists('serinax_attack')) this.anims.create({ key: 'serinax_attack', frames: this.anims.generateFrameNumbers('serinax', { start: 4, end: 7 }), frameRate: 8, repeat: 0  });
+    }
+    if (this.textures.exists('nexarion')) {
+      this.textures.get('nexarion').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('nexarion_run'))    this.anims.create({ key: 'nexarion_run',    frames: this.anims.generateFrameNumbers('nexarion', { start: 0, end: 3 }), frameRate: 3, repeat: -1 });
+      if (!this.anims.exists('nexarion_attack')) this.anims.create({ key: 'nexarion_attack', frames: this.anims.generateFrameNumbers('nexarion', { start: 4, end: 7 }), frameRate: 6, repeat: 0  });
+    }
+    if (this.textures.exists('vorgath')) {
+      this.textures.get('vorgath').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('vorgath_run'))    this.anims.create({ key: 'vorgath_run',    frames: this.anims.generateFrameNumbers('vorgath', { start: 0, end: 3 }), frameRate: 6, repeat: -1 });
+      if (!this.anims.exists('vorgath_attack')) this.anims.create({ key: 'vorgath_attack', frames: this.anims.generateFrameNumbers('vorgath', { start: 4, end: 7 }), frameRate: 8, repeat: 0  });
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     this.enemyManager = new EnemyManager(this);
     this.enemyManager.create();
 
@@ -182,6 +216,7 @@ export default class Game extends Phaser.Scene {
         this.lootSystem.update(delta, this.playerManager);
         this.combatManager.update();   // clean up off-screen projectiles
         this.processAbilities(time);
+        this.checkProjectileHits();
 
         // --- Health Regen tick (every 3 seconds) ---
         const regenRate = this.playerManager.stats.healthRegen || 0;
@@ -202,7 +237,7 @@ export default class Game extends Phaser.Scene {
         if (!this._lastSyncTime || time - this._lastSyncTime > 50) {
           this._lastSyncTime = time;
           GameBridge.onSyncData({
-            playerStats: this.playerManager.stats,
+            playerStats: { ...this.playerManager.stats },
             timer: Math.floor(this.gameTimer / 1000),
             kills: this.killCount,
             wave: this.enemyManager.waveState.currentWave,
@@ -543,11 +578,12 @@ export default class Game extends Phaser.Scene {
 
   breakCombo() {
     if (this.currentCombo === 0) return;
+    const lostCombo = this.currentCombo;
     this.currentCombo = 0;
     this.comboLevel = 0;
 
     // Small "COMBO LOST" flash
-    if (this.currentCombo > 4) {
+    if (lostCombo > 4) {
       const lost = this.add.text(
         this.cameras.main.centerX,
         this.cameras.main.centerY - 80,
@@ -624,14 +660,6 @@ export default class Game extends Phaser.Scene {
         });
       }
     }
-
-    // If boss was just killed and regular enemies already done — complete wave
-    if (stats.isBoss && waveCanComplete && ws.killedInWave >= ws.targetInWave) {
-      ws.status = 'COMPLETE';
-      this.time.delayedCall(500, () => {
-        this.stateMachine.setState('LEVEL_UP');
-      });
-    }
   }
 
   startNextWave(waveNum) {
@@ -643,6 +671,44 @@ export default class Game extends Phaser.Scene {
       this.tweens.add({
          targets: waveTxt, y: '+=60', alpha: 1, duration: 600, hold: 1800, yoyo: true, onComplete: () => waveTxt.destroy()
       });
+  }
+
+  // Ручная проверка попаданий — fallback для Shape-based projectiles (Ellipse)
+  // у которых Phaser overlap иногда десинхронизируется
+  checkProjectileHits() {
+    const projs = this.combatManager.projectiles?.getChildren() ?? [];
+    const enemies = this.enemyManager.allEnemies().filter((e: any) => e.active);
+    const HIT_RADIUS = 28;
+
+    for (const proj of projs as any[]) {
+      if (!proj.active) continue;
+      for (const enemy of enemies) {
+        if (!enemy.active) continue;
+        const dist = Phaser.Math.Distance.Between(proj.x, proj.y, enemy.x, enemy.y);
+        if (dist < HIT_RADIUS) {
+          const stats = enemy.getData('stats');
+          if (!stats) continue;
+          const baseDmg = proj.getData('damage') || 25;
+          let finalDmg = baseDmg * this.playerManager.stats.damageMultiplier;
+          if (stats.eliteAffix?.flatArmor) finalDmg = Math.max(1, finalDmg - stats.eliteAffix.flatArmor);
+          const isCrit = Math.random() < this.playerManager.stats.critChance;
+          if (isCrit) finalDmg *= this.playerManager.stats.critMultiplier;
+          finalDmg = Math.floor(finalDmg);
+          stats.hp -= finalDmg;
+          stats.lastHit = this.time.now;
+          enemy.setTint(isCrit ? 0xffff00 : 0xffffff);
+          this.time.delayedCall(60, () => { if (enemy.active) enemy.clearTint(); });
+          if (proj.getData('poison')) this.enemyManager.applyStatusEffect(enemy, 'POISONED', { duration: proj.getData('poisonDuration') || 4000, dps: proj.getData('poisonDps') || 15, baseDamage: finalDmg });
+          if (proj.getData('wind')) this.enemyManager.applyStatusEffect(enemy, 'WIND', { baseDamage: finalDmg });
+          if (proj.getData('water')) this.enemyManager.applyStatusEffect(enemy, 'FROZEN', { duration: proj.getData('slowDuration') || 2000, slowFactor: proj.getData('slowFactor') || 0.4 });
+          if (proj.getData('lightning')) this.enemyManager.applyStatusEffect(enemy, 'STUNNED', { duration: 600, baseDamage: finalDmg });
+          proj.setActive(false).setVisible(false);
+          proj.body.enable = false;
+          if (stats.hp <= 0) this.onEnemyKilled(enemy);
+          break; // один снаряд — один враг
+        }
+      }
+    }
   }
 
   processAbilities(time) {

@@ -110,11 +110,13 @@ export const ENEMY_SPRITE_REGISTRY: Record<string, EnemySpriteEntry> = {
   SHIELDER: {
     enemyType:   'SHIELDER',
     label:       'Iron Shielder',
-    textureKey:  'enemy_grunt',
-    assetPath:   '',
-    frameWidth:  500,
-    frameHeight: 700,
-    scale:       0.15,
+    textureKey:  'shielder',
+    // Единый шит: 1408x752 → 4x2 кадра → frame 352x376
+    // row 0 (frames 0–3): march | row 1 (frames 4–7): attack
+    assetPath:   'assets/shielder.png',
+    frameWidth:  352,
+    frameHeight: 376,
+    scale:       0.30,  // visual: ~106x113px — крупнее grunt
     anims: {
       run:    { start: 0, end: 3, frameRate: 7  },
       attack: { start: 4, end: 7, frameRate: 9  },

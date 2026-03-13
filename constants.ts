@@ -282,6 +282,7 @@ export const BOSS_TEMPLATES = {
     size: 32,
     color: 0xff0000,
     xpReward: 1000,
+    goldReward: 120,
     behavior: 'BOSS_AI',
     phaseThresholds: [1.0, 0.6, 0.2],
     phases: [
@@ -362,14 +363,21 @@ export const GAME_BALANCE = {
         waveNumber: wave,
         totalEnemies: 15 + wave * 5,
         bossKey,
-        composition: {
-          MELEE_GRUNT:   Math.max(0.05, 0.75 - wave * 0.04),
-          RANGED_ARCHER: Math.min(0.30, 0.08 + wave * 0.03),
-          TANK_BRUTE:    wave >= 3 ? Math.min(0.20, (wave - 2) * 0.04) : 0,
-          ELITE_DEMON:   wave >= 6 ? Math.min(0.20, (wave - 5) * 0.04) : 0,
-          SUMMONER:      hasSummoner ? Math.min(0.15, (wave - 3) * 0.025) : 0,
-          SHIELDER:      hasShielder ? Math.min(0.15, (wave - 4) * 0.025) : 0,
-        },
+        composition: (() => {
+          const raw = {
+            MELEE_GRUNT:   Math.max(0.05, 0.75 - wave * 0.04),
+            RANGED_ARCHER: Math.min(0.30, 0.08 + wave * 0.03),
+            TANK_BRUTE:    wave >= 3 ? Math.min(0.20, (wave - 2) * 0.04) : 0,
+            ELITE_DEMON:   wave >= 6 ? Math.min(0.20, (wave - 5) * 0.04) : 0,
+            SUMMONER:      hasSummoner ? Math.min(0.15, (wave - 3) * 0.025) : 0,
+            SHIELDER:      hasShielder ? Math.min(0.15, (wave - 4) * 0.025) : 0,
+          };
+          const total = Object.values(raw).reduce((s, v) => s + v, 0);
+          if (total <= 0) return raw;
+          const norm: any = {};
+          for (const k in raw) norm[k] = (raw as any)[k] / total;
+          return norm;
+        })(),
         spawnInterval: Math.max(150, 2000 - wave * 100),
         spawnBurst: Math.min(8, 1 + Math.floor(wave / 2.5)),
         multipliers: {
@@ -536,7 +544,7 @@ export const PASSIVE_UPGRADES = [
   { stat: 'maxHp',             value: 20,   description: 'Integrity: Max HP +20',          icon: '❤️',  weight: 1 },
   { stat: 'damageMultiplier',  value: 0.15, description: 'Power: Damage +15%',              icon: '⚔️',  weight: 1, multiplier: true },
   { stat: 'cooldownMultiplier',value: 0.1,  description: 'Haste: Attack Speed +10%',        icon: '⏳',  weight: 1, multiplier: true },
-  { stat: 'speed',             value: 0.5,  description: 'Agility: Move Speed +15%',        icon: '👟',  weight: 1, multiplier: true },
+  { stat: 'speed',             value: 0.5,  description: 'Agility: Move Speed +0.5',        icon: '👟',  weight: 1, multiplier: true },
   { stat: 'critChance',        value: 0.05, description: 'Focus: Crit Chance +5%',          icon: '🎯',  weight: 1 },
   { stat: 'critMultiplier',    value: 0.25, description: 'Lethality: Crit Damage +25%',     icon: '💥',  weight: 1, multiplier: true },
   { stat: 'armor',             value: 5,    description: 'Plating: Armor +5',               icon: '🛡️',  weight: 1 },
