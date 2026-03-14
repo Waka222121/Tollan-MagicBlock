@@ -1141,79 +1141,87 @@ export class EnemyManager {
   }
 
   private castChainLightningAbility(boss: any, bossData: any, stats: any, player: any) {
-    // Strikes player with a visible fast red bolt; keeps instant-damage fallback for reliability
+    // Dodgeable lightning: short telegraph, then a fast bolt to the locked target position
     bossData.state = 'CASTING';
     this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
 
     const damage = stats.damage * 0.8;
     const originX = boss.x;
     const originY = boss.y;
-    const hitX = player.x;
-    const hitY = player.y;
+    const rawTargetX = player.x;
+    const rawTargetY = player.y;
 
-    const bolt: any = this.projectiles.get(originX, originY);
-    if (bolt) {
-      bolt.setActive(true).setVisible(true);
-      bolt.body.reset(originX, originY);
-      bolt.body.enable = true;
-      bolt.body.setVelocity(0, 0);
-      if (bolt.setSize) bolt.setSize(18, 18);
-      if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
-      else if (bolt.setTint) bolt.setTint(0xff2200);
-      bolt.setDepth?.(130);
-      bolt.setData('damage', damage);
-      bolt.setData('poison', false);
+    // Limit lightning cast radius so Nexarion can't snipe from across the whole map
+    const maxLightningRange = 460;
+    const dx = rawTargetX - originX;
+    const dy = rawTargetY - originY;
+    const dist = Math.hypot(dx, dy);
+    const rangeScale = dist > maxLightningRange ? (maxLightningRange / dist) : 1;
+    const targetX = originX + dx * rangeScale;
+    const targetY = originY + dy * rangeScale;
 
-      this.scene.physics.moveToObject(bolt, player, 520);
+    // Telegraph where lightning will strike so player can react
+    const warn = (this.scene.add as any).ellipse(targetX, targetY, 92, 92, 0xff2200, 0.2)
+      .setDepth(209)
+      .setStrokeStyle(4, 0xff2200, 1);
+    this.scene.tweens.add({ targets: warn, alpha: 0.95, scaleX: 1.6, scaleY: 1.6, duration: 360, yoyo: true, onComplete: () => warn.destroy() });
 
-      // Safety: if overlap misses, apply direct hit once and despawn the bolt
-      this.scene.time.delayedCall(220, () => {
-        if (!bolt.active) return;
-        this.scene.events.emit('player_damaged', damage);
-        bolt.setActive(false).setVisible(false);
-        if (bolt.body) bolt.body.enable = false;
-      });
-    } else {
-      // Fallback when projectile pool is exhausted
-      this.scene.events.emit('player_damaged', damage);
-    }
-
-    // Visual lightning beam (jagged + impact flash)
+    // Visual lightning beam (jagged + impact flash) at cast moment
     const lightningArc = (this.scene.add as any).graphics().setDepth(210);
-    lightningArc.lineStyle(3, 0xff2200, 0.95);
+    const lightningGlow = (this.scene.add as any).graphics().setDepth(209);
+    lightningArc.lineStyle(10, 0xff2200, 1);
+    lightningGlow.lineStyle(20, 0xff2200, 0.38);
     lightningArc.beginPath();
+    lightningGlow.beginPath();
     lightningArc.moveTo(originX, originY);
+    lightningGlow.moveTo(originX, originY);
     const segments = 6;
     for (let i = 1; i < segments; i++) {
       const t = i / segments;
-      const ix = Phaser.Math.Linear(originX, hitX, t) + Phaser.Math.Between(-16, 16);
-      const iy = Phaser.Math.Linear(originY, hitY, t) + Phaser.Math.Between(-16, 16);
+      const ix = Phaser.Math.Linear(originX, targetX, t) + Phaser.Math.Between(-16, 16);
+      const iy = Phaser.Math.Linear(originY, targetY, t) + Phaser.Math.Between(-16, 16);
       lightningArc.lineTo(ix, iy);
+      lightningGlow.lineTo(ix, iy);
     }
-    lightningArc.lineTo(hitX, hitY);
+    lightningArc.lineTo(targetX, targetY);
+    lightningGlow.lineTo(targetX, targetY);
     lightningArc.strokePath();
+    lightningGlow.strokePath();
+    this.scene.tweens.add({ targets: [lightningArc, lightningGlow], alpha: 0, duration: 300, onComplete: () => { lightningArc.destroy(); lightningGlow.destroy(); } });
 
-    const impactFlash = (this.scene.add as any).ellipse(hitX, hitY, 28, 28, 0xff2200, 0.45).setDepth(211);
-    this.scene.tweens.add({ targets: impactFlash, alpha: 0, scaleX: 2.2, scaleY: 2.2, duration: 220, onComplete: () => impactFlash.destroy() });
-    this.scene.tweens.add({ targets: lightningArc, alpha: 0, duration: 260, onComplete: () => lightningArc.destroy() });
-
-    // Chain to nearby minions (friendly fire)
-    this.scene.time.delayedCall(400, () => {
+    // Fire after a short delay to make the ability dodgeable
+    this.scene.time.delayedCall(180, () => {
       if (!boss.active) return;
-      const nearby = this.group.getChildren().filter((e: any) =>
-        e.active && Phaser.Math.Distance.Between(boss.x, boss.y, e.x, e.y) < 280
-      );
-      nearby.slice(0, 3).forEach((e: any, i: number) => {
-        this.scene.time.delayedCall(i * 80, () => {
-          if (!e.active) return;
-          const chainArc = (this.scene.add as any).graphics().setDepth(200);
-          chainArc.lineStyle(2, 0xff4400, 0.7);
-          chainArc.lineBetween(player.x, player.y, e.x, e.y);
-          this.scene.time.delayedCall(150, () => chainArc.destroy());
-          const enemyStats = e.getData('stats');
-          if (enemyStats) enemyStats.hp -= stats.damage * 0.4;
+
+      const bolt: any = this.projectiles.get(originX, originY);
+      if (bolt) {
+        bolt.setActive(true).setVisible(true);
+        bolt.body.reset(originX, originY);
+        bolt.body.enable = true;
+        bolt.body.setVelocity(0, 0);
+        if (bolt.setSize) bolt.setSize(18, 18);
+        if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
+        else if (bolt.setTint) bolt.setTint(0xff2200);
+        bolt.setDepth?.(130);
+        bolt.setData('damage', damage);
+        bolt.setData('poison', false);
+
+        const angle = Phaser.Math.Angle.Between(originX, originY, targetX, targetY);
+        const speed = 560;
+        bolt.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+
+        // Impact flash at locked target point (visual only)
+        const impactFlash = (this.scene.add as any).ellipse(targetX, targetY, 52, 52, 0xff2200, 0.6).setDepth(211);
+        this.scene.tweens.add({ targets: impactFlash, alpha: 0, scaleX: 2.2, scaleY: 2.2, duration: 280, onComplete: () => impactFlash.destroy() });
+
+        // Despawn after travel time if it didn't hit anything
+        const travelTime = Math.min(900, Math.max(280, (Math.hypot(targetX - originX, targetY - originY) / speed) * 1000 + 100));
+        this.scene.time.delayedCall(travelTime, () => {
+          if (!bolt.active) return;
+          bolt.setActive(false).setVisible(false);
+          if (bolt.body) bolt.body.enable = false;
         });
-      });
+      }
     });
 
     this.scene.time.delayedCall(300, () => {
