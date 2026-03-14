@@ -1140,6 +1140,129 @@ export class EnemyManager {
      }
   }
 
+  private castChainLightningAbility(boss: any, bossData: any, stats: any, player: any) {
+    // Dodgeable lightning: short telegraph, then a fast bolt to the locked target position
+    bossData.state = 'CASTING';
+    this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
+
+    const damage = stats.damage * 0.8;
+    const originX = boss.x;
+    const originY = boss.y;
+    const targetX = player.x;
+    const targetY = player.y;
+
+    // Telegraph where lightning will strike so player can react
+    const warn = (this.scene.add as any).ellipse(targetX, targetY, 54, 54, 0xff2200, 0.12)
+      .setDepth(209)
+      .setStrokeStyle(2, 0xff2200, 0.9);
+    this.scene.tweens.add({ targets: warn, alpha: 0.95, scaleX: 1.6, scaleY: 1.6, duration: 220, yoyo: true, onComplete: () => warn.destroy() });
+
+    // Visual lightning beam (jagged + impact flash) at cast moment
+    const lightningArc = (this.scene.add as any).graphics().setDepth(210);
+    lightningArc.lineStyle(3, 0xff2200, 0.95);
+    lightningArc.beginPath();
+    lightningArc.moveTo(originX, originY);
+    const segments = 6;
+    for (let i = 1; i < segments; i++) {
+      const t = i / segments;
+      const ix = Phaser.Math.Linear(originX, targetX, t) + Phaser.Math.Between(-16, 16);
+      const iy = Phaser.Math.Linear(originY, targetY, t) + Phaser.Math.Between(-16, 16);
+      lightningArc.lineTo(ix, iy);
+    }
+    lightningArc.lineTo(targetX, targetY);
+    lightningArc.strokePath();
+    this.scene.tweens.add({ targets: lightningArc, alpha: 0, duration: 260, onComplete: () => lightningArc.destroy() });
+
+    // Fire after a short delay to make the ability dodgeable
+    this.scene.time.delayedCall(180, () => {
+      if (!boss.active) return;
+
+      const bolt: any = this.projectiles.get(originX, originY);
+      if (bolt) {
+        bolt.setActive(true).setVisible(true);
+        bolt.body.reset(originX, originY);
+        bolt.body.enable = true;
+        bolt.body.setVelocity(0, 0);
+        if (bolt.setSize) bolt.setSize(18, 18);
+        if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
+        else if (bolt.setTint) bolt.setTint(0xff2200);
+        bolt.setDepth?.(130);
+        bolt.setData('damage', damage);
+        bolt.setData('poison', false);
+
+        const angle = Phaser.Math.Angle.Between(originX, originY, targetX, targetY);
+        const speed = 560;
+        bolt.body.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
+
+        // Impact flash at locked target point (visual only)
+        const impactFlash = (this.scene.add as any).ellipse(targetX, targetY, 28, 28, 0xff2200, 0.45).setDepth(211);
+        this.scene.tweens.add({ targets: impactFlash, alpha: 0, scaleX: 2.2, scaleY: 2.2, duration: 220, onComplete: () => impactFlash.destroy() });
+
+        // Despawn after travel time if it didn't hit anything
+        this.scene.time.delayedCall(520, () => {
+          if (!bolt.active) return;
+          bolt.setActive(false).setVisible(false);
+          if (bolt.body) bolt.body.enable = false;
+        });
+      }
+    });
+
+    // Chain to nearby minions (friendly fire)
+    this.scene.time.delayedCall(400, () => {
+      if (!boss.active) return;
+      const nearby = this.group.getChildren().filter((e: any) =>
+        e.active && Phaser.Math.Distance.Between(boss.x, boss.y, e.x, e.y) < 280
+      );
+      nearby.slice(0, 3).forEach((e: any, i: number) => {
+        this.scene.time.delayedCall(i * 80, () => {
+          if (!e.active) return;
+          const chainArc = (this.scene.add as any).graphics().setDepth(200);
+          chainArc.lineStyle(2, 0xff4400, 0.7);
+          chainArc.lineBetween(player.x, player.y, e.x, e.y);
+          this.scene.time.delayedCall(150, () => chainArc.destroy());
+          const enemyStats = e.getData('stats');
+          if (enemyStats) enemyStats.hp -= stats.damage * 0.4;
+        });
+      });
+    });
+
+    this.scene.time.delayedCall(300, () => {
+      if (boss.active) { this.clearTintEnemy(boss); bossData.state = 'IDLE'; }
+    });
+    bossData.timers['CHAIN_LIGHTNING'] = 4500;
+  }
+
+  private castTeleportAbility(boss: any, bossData: any, player: any) {
+    // Teleports behind the player with telegraph + short recovery so player can react
+    bossData.state = 'TELEPORTING';
+    boss.body?.setVelocity?.(0, 0);
+
+    const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y) + Math.PI;
+    const destinationX = Phaser.Math.Clamp(player.x + Math.cos(angle) * 170, 80, WORLD_SIZE - 80);
+    const destinationY = Phaser.Math.Clamp(player.y + Math.sin(angle) * 170, 80, WORLD_SIZE - 80);
+
+    const marker = (this.scene.add as any).ellipse(destinationX, destinationY, 44, 44, 0xff3355, 0.12)
+      .setDepth(140)
+      .setStrokeStyle(2, 0xff3355, 0.8);
+    this.scene.tweens.add({ targets: marker, alpha: 0.9, scaleX: 1.8, scaleY: 1.8, duration: 260, yoyo: true, onComplete: () => marker.destroy() });
+
+    this.scene.tweens.add({ targets: boss, alpha: 0, duration: 260, onComplete: () => {
+      if (!boss.active) return;
+      boss.x = destinationX;
+      boss.y = destinationY;
+      this.scene.tweens.add({ targets: boss, alpha: 1, duration: 260 });
+
+      // Give player a brief escape window after teleport before contact damage can tick again
+      boss.setData('lastContactDamageAt', this.scene.time.now + 450);
+      bossData.state = 'RECOVERING';
+      this.scene.time.delayedCall(520, () => {
+        if (!boss.active) return;
+        bossData.state = 'IDLE';
+      });
+    }});
+    bossData.timers['TELEPORT'] = 9000;
+  }
+
   // Конкретная реализация всех босс‑способностей (рывок, АоЕ, призыв, яд, молния, телепорт)
   executeBossAbility(boss, ability, player) {
      const bossData = boss.getData('bossData');
@@ -1229,76 +1352,13 @@ export class EnemyManager {
            });
            bossData.timers['POISON_NOVA'] = 6000;
            break;
-
-        case 'CHAIN_LIGHTNING': {
-           // Strikes player with a visible projectile then bounces to nearby enemies
-           bossData.state = 'CASTING';
-           this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
-
-           // Spawn red lightning bolt from enemy projectile pool
-           const bolt: any = this.projectiles.get(boss.x, boss.y);
-           if (bolt) {
-             bolt.setActive(true).setVisible(true);
-             bolt.body.reset(boss.x, boss.y);
-             bolt.body.enable = true;
-             bolt.setDisplaySize(16, 16);
-             if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
-             else if (bolt.setTint) bolt.setTint(0xff2200);
-             bolt.setData('damage', stats.damage * 0.8);
-             const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y);
-             this.scene.physics.velocityFromAngle(
-               Phaser.Math.RadToDeg(angle), 480,
-               bolt.body.velocity
-             );
-           } else {
-             // Fallback: instant damage
-             this.scene.events.emit('player_damaged', stats.damage * 0.8);
-           }
-
-           // Visual arc
-           const arc = (this.scene.add as any).graphics().setDepth(200);
-           arc.lineStyle(3, 0xff2200, 0.8);
-           arc.lineBetween(boss.x, boss.y, player.x, player.y);
-           this.scene.time.delayedCall(200, () => { arc.destroy(); });
-
-           // Chain to nearby minions (friendly fire)
-           this.scene.time.delayedCall(400, () => {
-             if (!boss.active) return;
-             const nearby = this.group.getChildren().filter((e: any) =>
-               e.active && Phaser.Math.Distance.Between(boss.x, boss.y, e.x, e.y) < 280
-             );
-             nearby.slice(0, 3).forEach((e: any, i: number) => {
-               this.scene.time.delayedCall(i * 80, () => {
-                 if (!e.active) return;
-                 const chainArc = (this.scene.add as any).graphics().setDepth(200);
-                 chainArc.lineStyle(2, 0xff4400, 0.7);
-                 chainArc.lineBetween(player.x, player.y, e.x, e.y);
-                 this.scene.time.delayedCall(150, () => chainArc.destroy());
-                 const eStats = e.getData('stats');
-                 if (eStats) eStats.hp -= stats.damage * 0.4;
-               });
-             });
-           });
-
-           this.scene.time.delayedCall(300, () => {
-             if (boss.active) { this.clearTintEnemy(boss); bossData.state = 'IDLE'; }
-           });
-           bossData.timers['CHAIN_LIGHTNING'] = 4500;
+        // Keep NEXARION-heavy abilities delegated to helpers to reduce merge-conflict surface.
+        case 'CHAIN_LIGHTNING':
+           this.castChainLightningAbility(boss, bossData, stats, player);
            break;
-        }
 
         case 'TELEPORT':
-           // Teleports behind the player
-           bossData.state = 'TELEPORTING';
-           this.scene.tweens.add({ targets: boss, alpha: 0, duration: 300, onComplete: () => {
-             if (!boss.active) return;
-             const angle = Phaser.Math.Angle.Between(boss.x, boss.y, player.x, player.y) + Math.PI;
-             boss.x = Phaser.Math.Clamp(player.x + Math.cos(angle) * 120, 80, WORLD_SIZE - 80);
-             boss.y = Phaser.Math.Clamp(player.y + Math.sin(angle) * 120, 80, WORLD_SIZE - 80);
-             this.scene.tweens.add({ targets: boss, alpha: 1, duration: 300 });
-             bossData.state = 'IDLE';
-           }});
-           bossData.timers['TELEPORT'] = 9000;
+           this.castTeleportAbility(boss, bossData, player);
            break;
 
         default:
