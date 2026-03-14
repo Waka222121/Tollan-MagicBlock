@@ -164,5 +164,3 @@ npm ci
 npm run check:assets
 npm run build
 ```
-=======
->>>> main
