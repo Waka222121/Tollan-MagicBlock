@@ -1267,10 +1267,12 @@ export class EnemyManager {
      const stats = boss.getData('stats');
      if (!bossData) return;
 
-     // Play attack anim if boss has sprite
+     // Play attack anim if boss has sprite.
+     // Skip Nexarion attack animation during CHAIN_LIGHTNING to avoid fireball-like cast visuals.
      const bossTextureKey = boss.texture?.key;
      const atkAnim = bossTextureKey ? `${bossTextureKey}_attack` : null;
-     if (atkAnim && this.scene.anims.exists(atkAnim)) {
+     const skipAttackAnim = bossTextureKey === 'nexarion' && ability === 'CHAIN_LIGHTNING';
+     if (!skipAttackAnim && atkAnim && this.scene.anims.exists(atkAnim)) {
        boss.play(atkAnim, true);
        boss.once(`animationcomplete-${atkAnim}`, () => {
          const runAnim = `${bossTextureKey}_run`;
