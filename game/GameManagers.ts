@@ -1141,13 +1141,18 @@ export class EnemyManager {
   }
 
   private castChainLightningAbility(boss: any, bossData: any, stats: any, player: any) {
+ codex/fix-main-character-damage-issue-p8xzdl
     // Dodgeable lightning: short telegraph, then a fast bolt to the locked target position
+
+    // Strikes player with a visible fast red bolt; keeps instant-damage fallback for reliability
+ main
     bossData.state = 'CASTING';
     this.tintEnemy(boss, MAGIC_COLORS.LIGHTNING);
 
     const damage = stats.damage * 0.8;
     const originX = boss.x;
     const originY = boss.y;
+ codex/fix-main-character-damage-issue-p8xzdl
     const targetX = player.x;
     const targetY = player.y;
 
@@ -1158,6 +1163,39 @@ export class EnemyManager {
     this.scene.tweens.add({ targets: warn, alpha: 0.95, scaleX: 1.6, scaleY: 1.6, duration: 220, yoyo: true, onComplete: () => warn.destroy() });
 
     // Visual lightning beam (jagged + impact flash) at cast moment
+
+    const hitX = player.x;
+    const hitY = player.y;
+
+    const bolt: any = this.projectiles.get(originX, originY);
+    if (bolt) {
+      bolt.setActive(true).setVisible(true);
+      bolt.body.reset(originX, originY);
+      bolt.body.enable = true;
+      bolt.body.setVelocity(0, 0);
+      if (bolt.setSize) bolt.setSize(18, 18);
+      if (bolt.setFillStyle) bolt.setFillStyle(0xff2200, 1);
+      else if (bolt.setTint) bolt.setTint(0xff2200);
+      bolt.setDepth?.(130);
+      bolt.setData('damage', damage);
+      bolt.setData('poison', false);
+
+      this.scene.physics.moveToObject(bolt, player, 520);
+
+      // Safety: if overlap misses, apply direct hit once and despawn the bolt
+      this.scene.time.delayedCall(220, () => {
+        if (!bolt.active) return;
+        this.scene.events.emit('player_damaged', damage);
+        bolt.setActive(false).setVisible(false);
+        if (bolt.body) bolt.body.enable = false;
+      });
+    } else {
+      // Fallback when projectile pool is exhausted
+      this.scene.events.emit('player_damaged', damage);
+    }
+
+    // Visual lightning beam (jagged + impact flash)
+ main
     const lightningArc = (this.scene.add as any).graphics().setDepth(210);
     lightningArc.lineStyle(3, 0xff2200, 0.95);
     lightningArc.beginPath();
@@ -1165,6 +1203,7 @@ export class EnemyManager {
     const segments = 6;
     for (let i = 1; i < segments; i++) {
       const t = i / segments;
+ codex/fix-main-character-damage-issue-p8xzdl
       const ix = Phaser.Math.Linear(originX, targetX, t) + Phaser.Math.Between(-16, 16);
       const iy = Phaser.Math.Linear(originY, targetY, t) + Phaser.Math.Between(-16, 16);
       lightningArc.lineTo(ix, iy);
@@ -1206,6 +1245,18 @@ export class EnemyManager {
         });
       }
     });
+
+      const ix = Phaser.Math.Linear(originX, hitX, t) + Phaser.Math.Between(-16, 16);
+      const iy = Phaser.Math.Linear(originY, hitY, t) + Phaser.Math.Between(-16, 16);
+      lightningArc.lineTo(ix, iy);
+    }
+    lightningArc.lineTo(hitX, hitY);
+    lightningArc.strokePath();
+
+    const impactFlash = (this.scene.add as any).ellipse(hitX, hitY, 28, 28, 0xff2200, 0.45).setDepth(211);
+    this.scene.tweens.add({ targets: impactFlash, alpha: 0, scaleX: 2.2, scaleY: 2.2, duration: 220, onComplete: () => impactFlash.destroy() });
+    this.scene.tweens.add({ targets: lightningArc, alpha: 0, duration: 260, onComplete: () => lightningArc.destroy() });
+ main
 
     // Chain to nearby minions (friendly fire)
     this.scene.time.delayedCall(400, () => {
