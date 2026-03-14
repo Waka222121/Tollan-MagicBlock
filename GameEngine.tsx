@@ -8,6 +8,7 @@ import { GameBridge } from './game/GameBridge';
 import DevPanel from './components/DevPanel';
 
 interface GameEngineProps {
+  runId: number;
   state: GameStateValue;
   onStateChange: (state: GameStateValue) => void;
   onGameOver: (stats: RunStats) => void;
@@ -16,7 +17,7 @@ interface GameEngineProps {
   lastRunStats: RunStats | null;
 }
 
-const GameEngine = ({ state, onStateChange, onGameOver, onExit, onRetry, lastRunStats }: GameEngineProps) => {
+const GameEngine = ({ runId, state, onStateChange, onGameOver, onExit, onRetry, lastRunStats }: GameEngineProps) => {
   const gameRef = useRef<Phaser.Game | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isAlive = useRef(true);

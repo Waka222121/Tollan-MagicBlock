@@ -187,9 +187,11 @@ const DevPanel = ({ gameRef }: DevPanelProps) => {
             <Section label="БОССЫ">
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                 {['SERINAX', 'VORGATH', 'NEXARION'].map(b => (
-                  <Btn key={b} onClick={() => spawnBoss(b)} accent="#cc0044">
-                    {b}
-                  </Btn>
+                  <React.Fragment key={b}>
+                    <Btn onClick={() => spawnBoss(b)} accent="#cc0044">
+                      {b}
+                    </Btn>
+                  </React.Fragment>
                 ))}
               </div>
             </Section>

@@ -161,8 +161,7 @@ npm run preview
 Рекомендуемый pipeline:
 ```bash
 npm ci
+npm run check:merge-markers
 npm run check:assets
 npm run build
 ```
-=======
->>>> main
