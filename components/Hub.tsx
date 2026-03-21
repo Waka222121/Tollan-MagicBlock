@@ -9,7 +9,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
     <div style={{
       position:'relative', display:'flex', flexDirection:'column',
       height:'100vh', overflow:'hidden', color:'#fff',
-      userSelect:'none', pointerEvents:'auto', background:'#4E0D51'
+      userSelect:'none', pointerEvents:'auto', background:'#000000'
     }}>
       {/* Background */}
       <div style={{position:'absolute',inset:0,opacity:0.08,pointerEvents:'none'}}>
