@@ -200,7 +200,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
         <div style={{position:'fixed',inset:0,background:'rgba(8,3,18,0.82)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:400}}>
           <div style={{width:'min(520px,90vw)',border:'1px solid rgba(192,132,252,0.45)',background:'linear-gradient(160deg, rgba(32,16,60,0.95), rgba(12,8,24,0.95))',padding:'24px',boxShadow:'0 0 50px rgba(168,85,247,0.25)'}}>
             <div className="font-mono" style={{fontSize:'10px',letterSpacing:'0.35em',color:'#a78bfa',textTransform:'uppercase',marginBottom:'8px'}}>Pilot Registration</div>
-            <div className="font-pirata" style={{fontSize:'48px',lineHeight:1,color:'#fff',marginBottom:'16px'}}>Введите ник</div>
+            <div className="font-pirata" style={{fontSize:'48px',lineHeight:1,color:'#fff',marginBottom:'16px'}}>Enter your nickname</div>
             <input
               autoFocus
               value={draftName}
@@ -214,7 +214,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
               className="btn-stone"
               style={{width:'100%',padding:'12px 16px',fontSize:'14px',fontWeight:800,letterSpacing:'0.15em',textTransform:'uppercase',color:'#fff'}}
             >
-              Сохранить и продолжить
+              Save and continue
             </button>
           </div>
         </div>
