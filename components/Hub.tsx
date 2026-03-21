@@ -103,38 +103,39 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
             borderRadius:'14px',
             overflow:'hidden',
             maxWidth:'560px',
+            maxHeight:'420px',
             justifySelf:'end'
           }}>
-            <div style={{padding:'14px',borderBottom:'1px solid rgba(192,132,252,0.2)'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
+            <div style={{padding:'10px 12px',borderBottom:'1px solid rgba(192,132,252,0.2)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
                 <span className="font-mono" style={{fontSize:'11px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.45em',fontWeight:700}}>LEADERBOARD</span>
               </div>
-              <div style={{display:'flex',gap:'6px',marginBottom:'8px',alignItems:'center'}}>
-                <span className="font-mono" style={{flex:1,fontSize:'12px',letterSpacing:'0.16em',color:'#f5d0fe',textTransform:'uppercase'}}>
+              <div style={{display:'flex',gap:'6px',marginBottom:'6px',alignItems:'center'}}>
+                <span className="font-mono" style={{flex:1,fontSize:'10px',letterSpacing:'0.12em',color:'#f5d0fe',textTransform:'uppercase'}}>
                   NAME: {(playerName || 'UNREGISTERED').toUpperCase().replace(/\s+/g, '_')}
                 </span>
                 <button
                   onClick={() => onRefreshLeaderboard?.()}
                   style={{
-                    padding:'9px 12px', background:'rgba(109,40,217,0.28)', border:'1px solid rgba(196,181,253,0.75)',
-                    color:'#f5d0fe', fontSize:'12px', textTransform:'uppercase', letterSpacing:'0.12em', cursor:'pointer', fontWeight:700
+                    padding:'6px 10px', background:'rgba(109,40,217,0.28)', border:'1px solid rgba(196,181,253,0.75)',
+                    color:'#f5d0fe', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.12em', cursor:'pointer', fontWeight:700
                   }}
                 >
                   REFRESH
                 </button>
               </div>
-              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'5px',fontSize:'9px',textTransform:'uppercase',letterSpacing:'0.14em',marginTop:'10px'}}>
+              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'3px',fontSize:'8px',textTransform:'uppercase',letterSpacing:'0.12em',marginTop:'4px'}}>
                 {filledRows.map((entry, i) => (
                   <div key={entry ? `${entry.player_name}_${i}` : `empty_${i}`}
                     style={{
                       display:'grid',
-                      gridTemplateColumns:'28px 1fr auto',
-                      gap:'10px',
+                      gridTemplateColumns:'22px 1fr auto',
+                      gap:'8px',
                       alignItems:'center',
                       color: entry?.player_name === playerName ? '#ffffff' : '#ddd6fe',
                       background: entry?.player_name === playerName ? 'linear-gradient(90deg, rgba(168,85,247,0.35), rgba(168,85,247,0.1))' : 'rgba(13,7,31,0.28)',
                       border: entry?.player_name === playerName ? '1px solid rgba(216,180,254,0.95)' : '1px solid rgba(167,139,250,0.32)',
-                      padding:'5px 10px'
+                      padding:'3px 8px'
                     }}>
                     <span style={{color: '#c084fc', fontWeight:700}}>#{i + 1}</span>
                     <span>{entry ? String(entry.player_name || '').toUpperCase().replace(/\s+/g, '_') : '—'}</span>
@@ -143,24 +144,24 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                 ))}
               </div>
               {leaderboardStatus !== 'idle' && (
-                <div className="font-mono" style={{marginTop:'10px', fontSize:'9px', color: leaderboardStatus === 'loading' ? '#c084fc' : '#a78bfa', letterSpacing:'0.12em'}}>
+                <div className="font-mono" style={{marginTop:'6px', fontSize:'8px', color: leaderboardStatus === 'loading' ? '#c084fc' : '#a78bfa', letterSpacing:'0.1em'}}>
                   {leaderboardStatus === 'loading' ? 'SYNCING_LEADERBOARD...' : 'NETWORK_UNAVAILABLE_USING_LOCAL_FALLBACK'}
                 </div>
               )}
             </div>
-            <div style={{padding:'14px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
+            <div style={{padding:'10px 12px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
                 <span className="font-mono" style={{fontSize:'11px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.45em',fontWeight:700}}>PROTOCOL_MATRIX</span>
                 <span className="font-mono" style={{fontSize:'10px',color:'#c4b5fd',display:'flex',alignItems:'center',gap:'6px'}}>
                   <span style={{width:'6px',height:'6px',background:'#c084fc',borderRadius:'50%',display:'inline-block',boxShadow:'0 0 8px #c084fc'}}></span>
                   STABLE
                 </span>
               </div>
-              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'7px',fontSize:'12px',color:'#c4b5fd',textTransform:'uppercase',letterSpacing:'0.14em'}}>
-                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(192,132,252,0.2)',paddingBottom:'6px'}}>
+              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'4px',fontSize:'10px',color:'#c4b5fd',textTransform:'uppercase',letterSpacing:'0.12em'}}>
+                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(192,132,252,0.2)',paddingBottom:'4px'}}>
                   <span>Best Wave</span><span style={{color:'#fff'}}>WAVE {bestWave}</span>
                 </div>
-                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(192,132,252,0.2)',paddingBottom:'6px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(192,132,252,0.2)',paddingBottom:'4px'}}>
                   <span>Best Score</span><span style={{color:'#fff'}}>{highScore.toLocaleString()}</span>
                 </div>
                 <div style={{display:'flex',justifyContent:'space-between'}}>
