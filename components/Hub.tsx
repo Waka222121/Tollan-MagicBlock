@@ -47,7 +47,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
         </header>
 
         {/* MAIN */}
-        <main style={{flex:1,display:'grid',gridTemplateColumns:'5fr 7fr',gap:'32px',alignItems:'stretch',minHeight:0}}>
+        <main style={{flex:1,display:'grid',gridTemplateColumns:'6fr 6fr',gap:'28px',alignItems:'stretch',minHeight:0}}>
 
           {/* LEFT */}
           <div style={{display:'flex',flexDirection:'column',justifyContent:'center'}}>
@@ -101,9 +101,11 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
             border:'1px solid rgba(192,132,252,0.35)',
             boxShadow:'0 0 40px rgba(139,92,246,0.22), 0 20px 60px rgba(0,0,0,0.55)',
             borderRadius:'14px',
-            overflow:'hidden'
+            overflow:'hidden',
+            maxWidth:'560px',
+            justifySelf:'end'
           }}>
-            <div style={{padding:'18px',borderBottom:'1px solid rgba(192,132,252,0.2)'}}>
+            <div style={{padding:'14px',borderBottom:'1px solid rgba(192,132,252,0.2)'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
                 <span className="font-mono" style={{fontSize:'11px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.45em',fontWeight:700}}>LEADERBOARD</span>
               </div>
@@ -146,7 +148,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                 </div>
               )}
             </div>
-            <div style={{padding:'18px'}}>
+            <div style={{padding:'14px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
                 <span className="font-mono" style={{fontSize:'11px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.45em',fontWeight:700}}>PROTOCOL_MATRIX</span>
                 <span className="font-mono" style={{fontSize:'10px',color:'#c4b5fd',display:'flex',alignItems:'center',gap:'6px'}}>
