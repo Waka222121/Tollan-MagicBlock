@@ -1244,9 +1244,9 @@ export default class Game extends Phaser.Scene {
                     if ((this as any)._dragonVisible) {
                       if (!(this as any)._dragonSprite) {
                         if (this.textures.exists('dragon_breath_fireball')) {
-                          // origin(0.0,0.5) + flipX: шар у основания (у игрока), хвост наружу
+                          // origin(0.0,0.5): белая часть у основания (со стороны игрока), хвост наружу
                           (this as any)._dragonSprite = this.add.image(bx, by, 'dragon_breath_fireball')
-                            .setDepth(156).setScale(0.6).setOrigin(0.0, 0.5).setFlipX(true);
+                            .setDepth(156).setScale(0.6).setOrigin(0.0, 0.5);
                         } else {
                           (this as any)._dragonSprite = (this.add as any).ellipse(bx, by, 40, 40, 0xff6600, 1)
                             .setDepth(156);
@@ -1256,8 +1256,8 @@ export default class Game extends Phaser.Scene {
                       if (spr) {
                         spr.x = bx;
                         spr.y = by;
-                        // Поворачиваем так чтобы хвост всегда был направлен от игрока
-                        if (spr.setRotation) spr.setRotation(a + Math.PI);
+                        // Поворачиваем так, чтобы "белая" яркая часть оставалась со стороны игрока
+                        if (spr.setRotation) spr.setRotation(a);
                         spr.setVisible(true);
                       }
                       if (this.time.now > (this as any)._dragonShowUntil) {
