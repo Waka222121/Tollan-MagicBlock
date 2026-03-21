@@ -103,7 +103,8 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
             borderRadius:'14px',
             overflow:'hidden',
             width:'100%',
-            minWidth:'620px'
+            minWidth:'580px',
+            maxWidth:'600px'
           }}>
             <div style={{padding:'18px',borderBottom:'1px solid rgba(192,132,252,0.2)'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
