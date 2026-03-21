@@ -2,19 +2,9 @@ import React, { useState } from 'react';
 
 const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
   const [draftName, setDraftName] = useState(playerName || '');
-  const fallbackBoard = [
-    { player_name: 'NEON_WRAITH', wave: Math.max(1, bestWave + 4), score: 0 },
-    { player_name: 'ARC_SYN', wave: Math.max(1, bestWave + 2), score: 0 },
-    { player_name: playerName, wave: Math.max(1, bestWave), score: highScore },
-    { player_name: 'VIOLET_CORE', wave: Math.max(1, bestWave - 1), score: 0 },
-    { player_name: 'BLADE_BYTE', wave: Math.max(1, bestWave - 2), score: 0 },
-    { player_name: 'PHASE_ZERO', wave: Math.max(1, bestWave - 3), score: 0 },
-    { player_name: 'EMBER_NODE', wave: Math.max(1, bestWave - 4), score: 0 },
-    { player_name: 'RIFT_RUNNER', wave: Math.max(1, bestWave - 5), score: 0 },
-    { player_name: 'OMEGA_PING', wave: Math.max(1, bestWave - 6), score: 0 },
-    { player_name: 'NOVA_LOOP', wave: Math.max(1, bestWave - 7), score: 0 },
-  ];
-  const rows = (leaderboard.length ? leaderboard : fallbackBoard).slice(0, 10);
+  const rows = leaderboard.slice(0, 5);
+  const filledRows = [...rows];
+  while (filledRows.length < 5) filledRows.push(null);
   return (
     <div style={{
       position:'relative', display:'flex', flexDirection:'column',
@@ -57,7 +47,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
         </header>
 
         {/* MAIN */}
-        <main style={{flex:1,display:'grid',gridTemplateColumns:'6fr 6fr',gap:'32px',alignItems:'stretch',minHeight:0}}>
+        <main style={{flex:1,display:'grid',gridTemplateColumns:'5fr 7fr',gap:'32px',alignItems:'stretch',minHeight:0}}>
 
           {/* LEFT */}
           <div style={{display:'flex',flexDirection:'column',justifyContent:'center'}}>
@@ -132,21 +122,21 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                 </button>
               </div>
               <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'5px',fontSize:'9px',textTransform:'uppercase',letterSpacing:'0.14em',marginTop:'10px'}}>
-                {rows.map((entry, i) => (
-                  <div key={`${entry.player_name}_${i}`}
+                {filledRows.map((entry, i) => (
+                  <div key={entry ? `${entry.player_name}_${i}` : `empty_${i}`}
                     style={{
                       display:'grid',
                       gridTemplateColumns:'28px 1fr auto',
                       gap:'10px',
                       alignItems:'center',
-                      color: entry.player_name === playerName ? '#ffffff' : '#ddd6fe',
-                      background: entry.player_name === playerName ? 'linear-gradient(90deg, rgba(168,85,247,0.35), rgba(168,85,247,0.1))' : 'rgba(13,7,31,0.28)',
-                      border: entry.player_name === playerName ? '1px solid rgba(216,180,254,0.95)' : '1px solid rgba(167,139,250,0.32)',
+                      color: entry?.player_name === playerName ? '#ffffff' : '#ddd6fe',
+                      background: entry?.player_name === playerName ? 'linear-gradient(90deg, rgba(168,85,247,0.35), rgba(168,85,247,0.1))' : 'rgba(13,7,31,0.28)',
+                      border: entry?.player_name === playerName ? '1px solid rgba(216,180,254,0.95)' : '1px solid rgba(167,139,250,0.32)',
                       padding:'5px 10px'
                     }}>
                     <span style={{color: '#c084fc', fontWeight:700}}>#{i + 1}</span>
-                    <span>{String(entry.player_name || '').toUpperCase().replace(/\s+/g, '_')}</span>
-                    <span style={{color:'#fff', fontWeight:700, letterSpacing:'0.12em'}}>WAVE {entry.wave}</span>
+                    <span>{entry ? String(entry.player_name || '').toUpperCase().replace(/\s+/g, '_') : '—'}</span>
+                    <span style={{color:'#fff', fontWeight:700, letterSpacing:'0.12em'}}>{entry ? `WAVE ${entry.wave}` : '—'}</span>
                   </div>
                 ))}
               </div>
