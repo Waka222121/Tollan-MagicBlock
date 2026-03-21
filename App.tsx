@@ -6,15 +6,17 @@ import AITerminal from './components/AITerminal';
 import { fetchWaveLeaderboard, submitWaveResult, type WaveLeaderboardEntry } from './lib/leaderboardClient';
 
 const App = () => {
+  const initialStoredName = localStorage.getItem('mb_player_name');
   const [gameState,    setGameState]    = useState(GameState.MENU);
   const [highScore,    setHighScore]    = useState(0);
   const [totalKills,   setTotalKills]   = useState(0);
   const [bestWave,     setBestWave]     = useState(1);
   const [lastRunStats, setLastRunStats] = useState(null);
   const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [playerName, setPlayerName] = useState(() => localStorage.getItem('mb_player_name') || 'YOU');
+  const [playerName, setPlayerName] = useState(() => initialStoredName || '');
   const [leaderboard, setLeaderboard] = useState<WaveLeaderboardEntry[]>([]);
   const [lbStatus, setLbStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [isNamePromptOpen, setIsNamePromptOpen] = useState(() => !initialStoredName);
   // Увеличивается при каждом старте — гарантирует пересоздание GameEngine
   const runKey = useRef(0);
 
@@ -51,6 +53,7 @@ const App = () => {
     const next = name.trim().slice(0, 18) || 'YOU';
     setPlayerName(next);
     localStorage.setItem('mb_player_name', next);
+    setIsNamePromptOpen(false);
   }, []);
 
   const backToMenu = useCallback(() => {
@@ -75,6 +78,7 @@ const App = () => {
           totalKills={totalKills}
           bestWave={bestWave}
           playerName={playerName}
+          isNamePromptOpen={isNamePromptOpen}
           onPlayerNameChange={handlePlayerNameChange}
           leaderboard={leaderboard}
           leaderboardStatus={lbStatus}

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
+const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
+  const [draftName, setDraftName] = useState(playerName || '');
   const fallbackBoard = [
     { player_name: 'NEON_WRAITH', wave: Math.max(1, bestWave + 4), score: 0 },
     { player_name: 'ARC_SYN', wave: Math.max(1, bestWave + 2), score: 0 },
@@ -106,26 +107,19 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
             <div style={{background:'rgba(0,0,0,0.42)',padding:'18px',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
                 <span className="font-mono" style={{fontSize:'10px',color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.35em',fontWeight:700}}>Wave_Leaderboard</span>
-                <span className="font-mono" style={{fontSize:'9px',color: leaderboard.length ? '#22d3ee' : '#f59e0b'}}>
+                <span className="font-mono" style={{fontSize:'9px',color: leaderboard.length ? '#c084fc' : '#a78bfa'}}>
                   {leaderboard.length ? 'ONLINE' : 'LOCAL_FALLBACK'}
                 </span>
               </div>
-              <div style={{display:'flex',gap:'6px',marginBottom:'8px'}}>
-                <input
-                  defaultValue={playerName}
-                  maxLength={18}
-                  onBlur={(e) => onPlayerNameChange?.(e.currentTarget.value)}
-                  placeholder="YOUR_NAME"
-                  style={{
-                    flex:1, background:'#04070a', border:'1px solid rgba(255,255,255,0.1)', color:'#cbd5e1',
-                    padding:'6px 8px', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.12em'
-                  }}
-                />
+              <div style={{display:'flex',gap:'6px',marginBottom:'8px',alignItems:'center'}}>
+                <span className="font-mono" style={{flex:1,fontSize:'10px',letterSpacing:'0.12em',color:'#d8b4fe',textTransform:'uppercase'}}>
+                  Pilot: {playerName || 'UNREGISTERED'}
+                </span>
                 <button
                   onClick={() => onRefreshLeaderboard?.()}
                   style={{
-                    padding:'6px 8px', background:'rgba(34,211,238,0.15)', border:'1px solid rgba(34,211,238,0.35)',
-                    color:'#67e8f9', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.1em', cursor:'pointer'
+                    padding:'6px 8px', background:'rgba(168,85,247,0.16)', border:'1px solid rgba(168,85,247,0.45)',
+                    color:'#d8b4fe', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.1em', cursor:'pointer'
                   }}
                 >
                   REFRESH
@@ -139,19 +133,19 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                       gridTemplateColumns:'28px 1fr auto',
                       gap:'8px',
                       alignItems:'center',
-                      color: entry.player_name === playerName ? '#fff' : '#94a3b8',
-                      background: entry.player_name === playerName ? 'rgba(34,211,238,0.08)' : 'transparent',
-                      border: entry.player_name === playerName ? '1px solid rgba(34,211,238,0.45)' : '1px solid transparent',
+                      color: entry.player_name === playerName ? '#fff' : '#c4b5fd',
+                      background: entry.player_name === playerName ? 'rgba(168,85,247,0.12)' : 'transparent',
+                      border: entry.player_name === playerName ? '1px solid rgba(192,132,252,0.55)' : '1px solid transparent',
                       padding:'6px 8px'
                     }}>
-                    <span style={{color: i < 3 ? '#f97316' : '#64748b', fontWeight:700}}>#{i + 1}</span>
+                    <span style={{color: i < 3 ? '#c084fc' : '#6d28d9', fontWeight:700}}>#{i + 1}</span>
                     <span>{entry.player_name}</span>
                     <span style={{color:'#fff', fontWeight:700}}>WAVE {entry.wave}</span>
                   </div>
                 ))}
               </div>
               {leaderboardStatus !== 'idle' && (
-                <div className="font-mono" style={{marginTop:'8px', fontSize:'9px', color: leaderboardStatus === 'loading' ? '#22d3ee' : '#f59e0b', letterSpacing:'0.12em'}}>
+                <div className="font-mono" style={{marginTop:'8px', fontSize:'9px', color: leaderboardStatus === 'loading' ? '#c084fc' : '#a78bfa', letterSpacing:'0.12em'}}>
                   {leaderboardStatus === 'loading' ? 'SYNCING_LEADERBOARD...' : 'NETWORK_UNAVAILABLE_USING_LOCAL_FALLBACK'}
                 </div>
               )}
@@ -202,6 +196,29 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
         </footer>
 
       </div>
+      {isNamePromptOpen && (
+        <div style={{position:'fixed',inset:0,background:'rgba(8,3,18,0.82)',backdropFilter:'blur(6px)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:400}}>
+          <div style={{width:'min(520px,90vw)',border:'1px solid rgba(192,132,252,0.45)',background:'linear-gradient(160deg, rgba(32,16,60,0.95), rgba(12,8,24,0.95))',padding:'24px',boxShadow:'0 0 50px rgba(168,85,247,0.25)'}}>
+            <div className="font-mono" style={{fontSize:'10px',letterSpacing:'0.35em',color:'#a78bfa',textTransform:'uppercase',marginBottom:'8px'}}>Pilot Registration</div>
+            <div className="font-pirata" style={{fontSize:'48px',lineHeight:1,color:'#fff',marginBottom:'16px'}}>Введите ник</div>
+            <input
+              autoFocus
+              value={draftName}
+              onChange={(e) => setDraftName(e.currentTarget.value)}
+              maxLength={18}
+              placeholder="YOUR_NICKNAME"
+              style={{width:'100%',padding:'12px 14px',background:'#0f0a1f',border:'1px solid rgba(192,132,252,0.45)',color:'#e9d5ff',fontSize:'14px',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:'14px'}}
+            />
+            <button
+              onClick={() => onPlayerNameChange?.(draftName)}
+              className="btn-stone"
+              style={{width:'100%',padding:'12px 16px',fontSize:'14px',fontWeight:800,letterSpacing:'0.15em',textTransform:'uppercase',color:'#fff'}}
+            >
+              Сохранить и продолжить
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
