@@ -12,34 +12,34 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
       userSelect:'none', pointerEvents:'auto', background:'#020402'
     }}>
       {/* Background */}
-      <div style={{position:'absolute',inset:0,opacity:0.2,pointerEvents:'none'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 50% 50%,#9b59b611 0%,transparent 50%)'}}></div>
-        <div style={{position:'absolute',top:'-20%',left:'-10%',width:'60%',height:'60%',background:'#9b59b608',filter:'blur(120px)',borderRadius:'50%'}}></div>
-        <div style={{position:'absolute',bottom:'-10%',right:'-5%',width:'50%',height:'50%',background:'#4ecdc405',filter:'blur(100px)',borderRadius:'50%'}}></div>
+      <div style={{position:'absolute',inset:0,opacity:0.08,pointerEvents:'none'}}>
+        <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 50% 50%,#b26ad414 0%,transparent 50%)'}}></div>
+        <div style={{position:'absolute',top:'-20%',left:'-10%',width:'60%',height:'60%',background:'#b26ad40a',filter:'blur(120px)',borderRadius:'50%'}}></div>
+        <div style={{position:'absolute',bottom:'-10%',right:'-5%',width:'50%',height:'50%',background:'#b26ad406',filter:'blur(100px)',borderRadius:'50%'}}></div>
       </div>
-      <div className="absolute inset-0 bg-grid opacity-10 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid opacity-5 pointer-events-none"></div>
 
       <div style={{
         position:'relative', zIndex:10, display:'flex', flexDirection:'column',
         height:'100%', width:'100%', maxWidth:'1280px', margin:'0 auto',
-        padding:'20px 40px 16px'
+        padding:'24px 44px 18px'
       }}>
 
         {/* HEADER */}
-        <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'16px',flexShrink:0}}>
-          <div style={{display:'flex',alignItems:'center',gap:'16px'}}>
-            <img src="/assets/MagicBlock-Logomark-White.png" alt="MagicBlock" style={{width:"68px",height:"68px",objectFit:"contain",flexShrink:0,filter:"drop-shadow(0 0 8px rgba(155,89,182,0.8))"}}/>
+        <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px',flexShrink:0}}>
+          <div style={{display:'flex',alignItems:'center',gap:'18px'}}>
+            <img src="/assets/MagicBlock-Logomark-White.png" alt="MagicBlock" style={{width:"76px",height:"76px",objectFit:"contain",flexShrink:0,filter:"drop-shadow(0 0 8px rgba(155,89,182,0.8))"}}/>
             <div style={{display:'flex',flexDirection:'column'}}>
-              <span className="font-pirata" style={{fontSize:'26px',letterSpacing:'0.1em',lineHeight:1,textTransform:'uppercase',color:'#fff'}}>TOLLAN</span>
-              <span className="font-mono" style={{fontSize:'11px',letterSpacing:'0.4em',color:'#9b59b6',textTransform:'uppercase',marginTop:'3px'}}>MagicBlock Protocol</span>
+              <span className="font-pirata" style={{fontSize:'30px',letterSpacing:'0.1em',lineHeight:1,textTransform:'uppercase',color:'#fff'}}>TOLLAN</span>
+              <span className="font-mono" style={{fontSize:'12px',letterSpacing:'0.4em',color:'#9b59b6',textTransform:'uppercase',marginTop:'4px'}}>MagicBlock Protocol</span>
             </div>
           </div>
-          <div style={{display:'flex',gap:'32px'}}>
-            <span className="font-mono" style={{fontSize:'9px',letterSpacing:'0.2em',color:'#64748b',textTransform:'uppercase',cursor:'pointer',transition:'color 0.2s'}}
+          <div style={{display:'flex',gap:'36px'}}>
+            <span className="font-mono" style={{fontSize:'10px',letterSpacing:'0.2em',color:'#64748b',textTransform:'uppercase',cursor:'pointer',transition:'color 0.2s'}}
               onMouseEnter={e=>(e.currentTarget.style.color='#fff')} onMouseLeave={e=>(e.currentTarget.style.color='#64748b')}>
               Execution Layer
             </span>
-            <span className="font-mono" style={{fontSize:'9px',letterSpacing:'0.2em',color:'#64748b',textTransform:'uppercase',cursor:'pointer',transition:'color 0.2s'}}
+            <span className="font-mono" style={{fontSize:'10px',letterSpacing:'0.2em',color:'#64748b',textTransform:'uppercase',cursor:'pointer',transition:'color 0.2s'}}
               onMouseEnter={e=>(e.currentTarget.style.color='#fff')} onMouseLeave={e=>(e.currentTarget.style.color='#64748b')}>
               Documentation
             </span>
