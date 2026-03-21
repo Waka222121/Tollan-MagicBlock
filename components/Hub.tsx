@@ -89,7 +89,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                 }}
               >
                 <div className="metal-shine"></div>
-                <span style={{position:'relative',zIndex:1}}>Initiate Link</span>
+                <span style={{position:'relative',zIndex:1}}>Game</span>
                 <svg style={{width:'16px',height:'16px',color:'#9b59b6',position:'relative',zIndex:1,transition:'transform 0.2s'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
