@@ -56,7 +56,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
             <h1 className="font-pirata" style={{
               fontSize:'clamp(6rem, 11vw, 10rem)',
               lineHeight:0.82,
-              letterSpacing:'-0.02em',
+              letterSpacing:'0.01em',
               textTransform:'uppercase',
               color:'#fff',
               marginBottom:'20px',
@@ -77,7 +77,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                 onClick={onStart}
                 className="btn-stone"
                 style={{
-                  padding:'10px 28px',fontSize:'16px',fontWeight:900,
+                  padding:'12px 34px',fontSize:'18px',fontWeight:900,
                   textTransform:'uppercase',fontStyle:'italic',
                   letterSpacing:'-0.03em',color:'#fff',
                   display:'flex',alignItems:'center',gap:'10px',
@@ -87,7 +87,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
               >
                 <div className="metal-shine"></div>
                 <span style={{position:'relative',zIndex:1}}>Game</span>
-                <svg style={{width:'16px',height:'16px',color:'#9b59b6',position:'relative',zIndex:1,transition:'transform 0.2s'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg style={{width:'18px',height:'18px',color:'#9b59b6',position:'relative',zIndex:1,transition:'transform 0.2s'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
               </button>
