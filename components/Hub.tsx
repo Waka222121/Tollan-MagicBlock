@@ -9,15 +9,15 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
     <div style={{
       position:'relative', display:'flex', flexDirection:'column',
       height:'100vh', overflow:'hidden', color:'#fff',
-      userSelect:'none', pointerEvents:'auto', background:'#c9b4f3'
+      userSelect:'none', pointerEvents:'auto', background:'#4E0D51'
     }}>
       {/* Background */}
-      <div style={{position:'absolute',inset:0,opacity:0.2,pointerEvents:'none'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 50% 50%,#9b59b611 0%,transparent 50%)'}}></div>
-        <div style={{position:'absolute',top:'-20%',left:'-10%',width:'60%',height:'60%',background:'#9b59b608',filter:'blur(120px)',borderRadius:'50%'}}></div>
-        <div style={{position:'absolute',bottom:'-10%',right:'-5%',width:'50%',height:'50%',background:'#4ecdc405',filter:'blur(100px)',borderRadius:'50%'}}></div>
+      <div style={{position:'absolute',inset:0,opacity:0.08,pointerEvents:'none'}}>
+        <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 50% 50%,#b26ad414 0%,transparent 50%)'}}></div>
+        <div style={{position:'absolute',top:'-20%',left:'-10%',width:'60%',height:'60%',background:'#b26ad40a',filter:'blur(120px)',borderRadius:'50%'}}></div>
+        <div style={{position:'absolute',bottom:'-10%',right:'-5%',width:'50%',height:'50%',background:'#b26ad406',filter:'blur(100px)',borderRadius:'50%'}}></div>
       </div>
-      <div className="absolute inset-0 bg-grid opacity-10 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-grid opacity-5 pointer-events-none"></div>
 
       <div style={{
         position:'relative', zIndex:10, display:'flex', flexDirection:'column',
