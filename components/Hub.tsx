@@ -77,17 +77,17 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                 onClick={onStart}
                 className="btn-stone"
                 style={{
-                  padding:'12px 34px',fontSize:'18px',fontWeight:900,
+                  padding:'16px 46px',fontSize:'24px',fontWeight:900,
                   textTransform:'uppercase',fontStyle:'italic',
                   letterSpacing:'-0.03em',color:'#fff',
-                  display:'flex',alignItems:'center',gap:'10px',
+                  display:'flex',alignItems:'center',gap:'12px',
                   cursor:'pointer',transition:'all 0.15s',overflow:'hidden',
                   position:'relative'
                 }}
               >
                 <div className="metal-shine"></div>
                 <span style={{position:'relative',zIndex:1}}>Game</span>
-                <svg style={{width:'18px',height:'18px',color:'#9b59b6',position:'relative',zIndex:1,transition:'transform 0.2s'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg style={{width:'24px',height:'24px',color:'#9b59b6',position:'relative',zIndex:1,transition:'transform 0.2s'}} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                 </svg>
               </button>
