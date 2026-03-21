@@ -516,6 +516,7 @@ export const ABILITIES_BASE = {
     description: 'Exhales a cone of fire burning all enemies in front for 3 sec.',
     damage: 18,
     baseCooldown: 6000,
+    activeDuration: 1800,
     icon: '🐉',
     type: 'weapon',
     element: 'fire',
