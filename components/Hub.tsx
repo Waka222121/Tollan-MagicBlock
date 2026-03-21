@@ -7,7 +7,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
     { player_name: 'ARC_SYN', wave: Math.max(1, bestWave + 2), score: 0 },
     { player_name: playerName, wave: Math.max(1, bestWave), score: highScore },
   ];
-  const rows = (leaderboard.length ? leaderboard : fallbackBoard).slice(0, 8);
+  const rows = (leaderboard.length ? leaderboard : fallbackBoard).slice(0, 3);
   return (
     <div style={{
       position:'relative', display:'flex', flexDirection:'column',
@@ -99,74 +99,71 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
 
           {/* RIGHT — leaderboard */}
           <div style={{
-            display:'grid',gridTemplateColumns:'1fr',gap:'1px',
-            background:'rgba(255,255,255,0.05)',
-            border:'1px solid rgba(255,255,255,0.05)',
-            boxShadow:'0 20px 60px rgba(0,0,0,0.5)'
+            display:'grid',gridTemplateColumns:'1fr',
+            background:'linear-gradient(180deg, rgba(28,8,52,0.92), rgba(11,5,24,0.98))',
+            border:'1px solid rgba(192,132,252,0.35)',
+            boxShadow:'0 0 40px rgba(139,92,246,0.22), 0 20px 60px rgba(0,0,0,0.55)'
           }}>
-            <div style={{background:'rgba(0,0,0,0.42)',padding:'18px',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
-                <span className="font-mono" style={{fontSize:'10px',color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.35em',fontWeight:700}}>Wave_Leaderboard</span>
-                <span className="font-mono" style={{fontSize:'9px',color: leaderboard.length ? '#c084fc' : '#a78bfa'}}>
-                  {leaderboard.length ? 'ONLINE' : 'LOCAL_FALLBACK'}
-                </span>
+            <div style={{padding:'18px',borderBottom:'1px solid rgba(192,132,252,0.2)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
+                <span className="font-mono" style={{fontSize:'11px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.45em',fontWeight:700}}>LEADERBOARD</span>
               </div>
               <div style={{display:'flex',gap:'6px',marginBottom:'8px',alignItems:'center'}}>
-                <span className="font-mono" style={{flex:1,fontSize:'10px',letterSpacing:'0.12em',color:'#d8b4fe',textTransform:'uppercase'}}>
-                  Pilot: {playerName || 'UNREGISTERED'}
+                <span className="font-mono" style={{flex:1,fontSize:'12px',letterSpacing:'0.16em',color:'#f5d0fe',textTransform:'uppercase'}}>
+                  NAME: {(playerName || 'UNREGISTERED').toUpperCase().replace(/\s+/g, '_')}
                 </span>
                 <button
                   onClick={() => onRefreshLeaderboard?.()}
                   style={{
-                    padding:'6px 8px', background:'rgba(168,85,247,0.16)', border:'1px solid rgba(168,85,247,0.45)',
-                    color:'#d8b4fe', fontSize:'10px', textTransform:'uppercase', letterSpacing:'0.1em', cursor:'pointer'
+                    padding:'9px 12px', background:'rgba(109,40,217,0.28)', border:'1px solid rgba(196,181,253,0.75)',
+                    color:'#f5d0fe', fontSize:'12px', textTransform:'uppercase', letterSpacing:'0.12em', cursor:'pointer', fontWeight:700
                   }}
                 >
                   REFRESH
                 </button>
               </div>
-              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'10px',textTransform:'uppercase',letterSpacing:'0.14em'}}>
+              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'8px',fontSize:'10px',textTransform:'uppercase',letterSpacing:'0.14em',marginTop:'10px'}}>
                 {rows.map((entry, i) => (
                   <div key={`${entry.player_name}_${i}`}
                     style={{
                       display:'grid',
                       gridTemplateColumns:'28px 1fr auto',
-                      gap:'8px',
+                      gap:'10px',
                       alignItems:'center',
-                      color: entry.player_name === playerName ? '#fff' : '#c4b5fd',
-                      background: entry.player_name === playerName ? 'rgba(168,85,247,0.12)' : 'transparent',
-                      border: entry.player_name === playerName ? '1px solid rgba(192,132,252,0.55)' : '1px solid transparent',
-                      padding:'6px 8px'
+                      color: entry.player_name === playerName ? '#ffffff' : '#ddd6fe',
+                      background: entry.player_name === playerName ? 'linear-gradient(90deg, rgba(168,85,247,0.35), rgba(168,85,247,0.1))' : 'rgba(13,7,31,0.28)',
+                      border: entry.player_name === playerName ? '1px solid rgba(216,180,254,0.95)' : '1px solid rgba(167,139,250,0.32)',
+                      padding:'8px 10px'
                     }}>
-                    <span style={{color: i < 3 ? '#c084fc' : '#6d28d9', fontWeight:700}}>#{i + 1}</span>
-                    <span>{entry.player_name}</span>
-                    <span style={{color:'#fff', fontWeight:700}}>WAVE {entry.wave}</span>
+                    <span style={{color: '#c084fc', fontWeight:700}}>#{i + 1}</span>
+                    <span>{String(entry.player_name || '').toUpperCase().replace(/\s+/g, '_')}</span>
+                    <span style={{color:'#fff', fontWeight:700, letterSpacing:'0.12em'}}>WAVE {entry.wave}</span>
                   </div>
                 ))}
               </div>
               {leaderboardStatus !== 'idle' && (
-                <div className="font-mono" style={{marginTop:'8px', fontSize:'9px', color: leaderboardStatus === 'loading' ? '#c084fc' : '#a78bfa', letterSpacing:'0.12em'}}>
+                <div className="font-mono" style={{marginTop:'10px', fontSize:'9px', color: leaderboardStatus === 'loading' ? '#c084fc' : '#a78bfa', letterSpacing:'0.12em'}}>
                   {leaderboardStatus === 'loading' ? 'SYNCING_LEADERBOARD...' : 'NETWORK_UNAVAILABLE_USING_LOCAL_FALLBACK'}
                 </div>
               )}
             </div>
-            <div style={{background:'rgba(0,0,0,0.6)',padding:'18px'}}>
+            <div style={{padding:'18px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'10px'}}>
-                <span className="font-mono" style={{fontSize:'10px',color:'#94a3b8',textTransform:'uppercase',letterSpacing:'0.35em',fontWeight:700}}>Protocol_Matrix</span>
-                <span className="font-mono" style={{fontSize:'9px',color:'#34d399',display:'flex',alignItems:'center',gap:'6px'}}>
-                  <span style={{width:'5px',height:'5px',background:'#34d399',borderRadius:'50%',display:'inline-block',boxShadow:'0 0 6px #34d399'}}></span>
+                <span className="font-mono" style={{fontSize:'11px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.45em',fontWeight:700}}>PROTOCOL_MATRIX</span>
+                <span className="font-mono" style={{fontSize:'10px',color:'#c4b5fd',display:'flex',alignItems:'center',gap:'6px'}}>
+                  <span style={{width:'6px',height:'6px',background:'#c084fc',borderRadius:'50%',display:'inline-block',boxShadow:'0 0 8px #c084fc'}}></span>
                   STABLE
                 </span>
               </div>
-              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'6px',fontSize:'10px',color:'#64748b',textTransform:'uppercase',letterSpacing:'0.15em'}}>
-                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.04)',paddingBottom:'5px'}}>
-                  <span>Best Wave</span><span style={{color:'#22d3ee'}}>WAVE_{bestWave}</span>
+              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'7px',fontSize:'12px',color:'#c4b5fd',textTransform:'uppercase',letterSpacing:'0.14em'}}>
+                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(192,132,252,0.2)',paddingBottom:'6px'}}>
+                  <span>Best Wave</span><span style={{color:'#fff'}}>WAVE {bestWave}</span>
                 </div>
-                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(255,255,255,0.04)',paddingBottom:'5px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',borderBottom:'1px solid rgba(192,132,252,0.2)',paddingBottom:'6px'}}>
                   <span>Best Score</span><span style={{color:'#fff'}}>{highScore.toLocaleString()}</span>
                 </div>
                 <div style={{display:'flex',justifyContent:'space-between'}}>
-                  <span>Total Purges</span><span style={{color:'#9b59b6'}}>{totalKills.toLocaleString()}</span>
+                  <span>Total Purges</span><span style={{color:'#fff'}}>{totalKills.toLocaleString()}</span>
                 </div>
               </div>
             </div>
