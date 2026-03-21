@@ -515,7 +515,7 @@ export const ABILITIES_BASE = {
     name: 'Dragon Breath',
     description: 'Exhales a cone of fire burning all enemies in front for 3 sec.',
     damage: 18,
-    baseCooldown: 3200,
+    baseCooldown: 6000,
     icon: '🐉',
     type: 'weapon',
     element: 'fire',

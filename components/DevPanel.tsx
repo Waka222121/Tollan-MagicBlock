@@ -10,6 +10,20 @@ const BOSS_NAMES: Record<number, string> = {
   20: 'SERINAX II', 25: 'VORGATH II', 30: 'NEXARION II',
 };
 
+const ABILITY_LIST = [
+  { id: 'fireball',      icon: '🔥', name: 'Ignis Bolt'     },
+  { id: 'lightning',     icon: '⚡', name: 'Chain Lightning' },
+  { id: 'aura',          icon: '🔮', name: 'Void Pulse'      },
+  { id: 'ice_nova',      icon: '❄️', name: 'Frost Nova'      },
+  { id: 'meteor_strike', icon: '☄️', name: 'Starfall'        },
+  { id: 'poison_bolt',   icon: '☠️', name: 'Venom Lash'      },
+  { id: 'storm_lance',   icon: '🗡️', name: 'Storm Lance'     },
+  { id: 'wind_slash',    icon: '🌪️', name: 'Gale Cut'        },
+  { id: 'waterball',     icon: '💧', name: 'Tidal Surge'     },
+  { id: 'dragon_breath', icon: '🐉', name: 'Dragon Breath'   },
+  { id: 'void_beam',     icon: '🌑', name: 'Void Beam'       },
+];
+
 const DevPanel = ({ gameRef }: DevPanelProps) => {
   const [open, setOpen] = useState(false);
   const [waveInput, setWaveInput] = useState('1');
@@ -54,6 +68,25 @@ const DevPanel = ({ gameRef }: DevPanelProps) => {
     scene.playerManager.stats.hp = 99999;
     scene.playerManager.stats.maxHp = 99999;
     addLog('👑 GOD MODE: armor=9999, hp=99999');
+  };
+
+  const giveAbility = (abilityId: string) => {
+    const scene = getScene();
+    if (!scene?.playerManager?.stats) return addLog('❌ PlayerManager не найден');
+    const stats = scene.playerManager.stats;
+    try {
+      const existing = stats.abilities.find((a: any) => a.id === abilityId);
+      if (existing) {
+        const slot = stats.abilities.indexOf(existing);
+        scene.applyUpgrade?.({ type: 'UPGRADE_ABILITY', abilityId, slot, id: 'dev_upg' });
+        addLog(`⬆️ Прокачана: ${abilityId} Lv${existing.level + 1}`);
+      } else {
+        scene.applyUpgrade?.({ type: 'NEW_ABILITY', abilityId, id: 'dev_new' });
+        addLog(`✨ Выдана: ${abilityId}`);
+      }
+    } catch (e: any) {
+      addLog(`❌ Ошибка: ${e.message}`);
+    }
   };
 
   const killAllEnemies = () => {
@@ -203,6 +236,29 @@ const DevPanel = ({ gameRef }: DevPanelProps) => {
                 <Btn onClick={() => setPlayerHP(999)}>HP MAX</Btn>
                 <Btn onClick={() => setPlayerHP(1)} accent="#ff2200">HP = 1</Btn>
               </div>
+            </Section>
+
+            {/* Abilities */}
+            <Section label="СПОСОБНОСТИ">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                {ABILITY_LIST.map(ab => (
+                  <button
+                    key={ab.id}
+                    onClick={() => giveAbility(ab.id)}
+                    title={ab.name}
+                    style={{
+                      background: '#0a0500', border: '1px solid #442200',
+                      color: '#ff8800', padding: '3px 7px', fontSize: 15,
+                      cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#1a0800')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '#0a0500')}
+                  >
+                    {ab.icon}
+                  </button>
+                ))}
+              </div>
+              <div style={{ color: '#552200', fontSize: 8, marginTop: 3 }}>клик = выдать / прокачать</div>
             </Section>
 
             {/* Enemies */}

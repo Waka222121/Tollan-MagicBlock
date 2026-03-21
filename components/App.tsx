@@ -2,15 +2,12 @@ import React, { useState, useCallback, useRef } from 'react';
 import { GameState } from './types';
 import Hub from './components/Hub';
 import GameEngine from './GameEngine';
-import AITerminal from './components/AITerminal';
 
 const App = () => {
   const [gameState,    setGameState]    = useState(GameState.MENU);
   const [highScore,    setHighScore]    = useState(0);
   const [totalKills,   setTotalKills]   = useState(0);
   const [lastRunStats, setLastRunStats] = useState(null);
-  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  // Увеличивается при каждом старте — гарантирует пересоздание GameEngine
   const runKey = useRef(0);
 
   const startGame = useCallback(() => {
@@ -38,11 +35,11 @@ const App = () => {
   return (
     <div className="w-full h-screen relative overflow-hidden select-none">
       {gameState === GameState.MENU && (
-        <Hub 
-          onStart={startGame} 
-          highScore={highScore} 
+        <Hub
+          onStart={startGame}
+          highScore={highScore}
           totalKills={totalKills}
-          onOpenTerminal={() => setIsTerminalOpen(true)}
+          onOpenTerminal={() => {}}
         />
       )}
 
@@ -56,10 +53,6 @@ const App = () => {
           onRetry={startGame}
           lastRunStats={lastRunStats}
         />
-      )}
-
-      {isTerminalOpen && (
-        <AITerminal onClose={() => setIsTerminalOpen(false)} />
       )}
     </div>
   );

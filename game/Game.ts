@@ -105,6 +105,15 @@ export default class Game extends Phaser.Scene {
     this.load.spritesheet('vorgath', 'assets/vorgath.png', { frameWidth: 800, frameHeight: 872 });
     this.load.spritesheet('nexarion', 'assets/nexarion.png', { frameWidth: 563, frameHeight: 614 });
 
+    // Projectile spritesheets
+    this.load.spritesheet('proj_fireball',  'assets/proj_fireball.png',  { frameWidth: 160, frameHeight: 160 });
+    this.load.spritesheet('proj_waterball', 'assets/proj_waterball.png', { frameWidth: 160, frameHeight: 160 });
+    this.load.spritesheet('proj_ice_nova',  'assets/proj_ice_nova.png',  { frameWidth: 326, frameHeight: 326 });
+
+    // Venom Lash projectile — 4 frames × 160×160px
+    this.load.spritesheet('proj_venom', 'assets/proj_venom.png', { frameWidth: 120, frameHeight: 120 });
+    this.load.image('dragon_breath_fireball', 'assets/dragon_breath_fireball.png');
+
     this.load.on('loaderror', (file: any) => {
       console.warn('[Game] Failed to load:', file.key);
     });
@@ -159,6 +168,32 @@ export default class Game extends Phaser.Scene {
       this.playerManager.sprite.play('wizard_idle');
     } else {
       console.warn('[Game] wizard_sheet_full.png не найден — используется статичный спрайт');
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    // ── Projectile animations ────────────────────────────────────────────
+    if (this.textures.exists('proj_fireball')) {
+      this.textures.get('proj_fireball').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('proj_fireball_fly'))
+        this.anims.create({ key: 'proj_fireball_fly', frames: this.anims.generateFrameNumbers('proj_fireball', { start: 0, end: 3 }), frameRate: 12, repeat: -1 });
+    }
+    if (this.textures.exists('proj_waterball')) {
+      this.textures.get('proj_waterball').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('proj_waterball_fly'))
+        this.anims.create({ key: 'proj_waterball_fly', frames: this.anims.generateFrameNumbers('proj_waterball', { start: 0, end: 3 }), frameRate: 10, repeat: -1 });
+    }
+    if (this.textures.exists('proj_ice_nova')) {
+      this.textures.get('proj_ice_nova').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('proj_ice_nova_burst'))
+        this.anims.create({ key: 'proj_ice_nova_burst', frames: this.anims.generateFrameNumbers('proj_ice_nova', { start: 0, end: 5 }), frameRate: 10, repeat: 0 });
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
+    // ── Venom Lash animation ─────────────────────────────────────────────
+    if (this.textures.exists('proj_venom')) {
+      this.textures.get('proj_venom').setFilter(Phaser.Textures.FilterMode.NEAREST);
+      if (!this.anims.exists('proj_venom_fly'))
+        this.anims.create({ key: 'proj_venom_fly', frames: this.anims.generateFrameNumbers('proj_venom', { start: 0, end: 3 }), frameRate: 8, repeat: -1 });
     }
     // ─────────────────────────────────────────────────────────────────────
 
@@ -268,6 +303,7 @@ export default class Game extends Phaser.Scene {
     this.stateMachine.addState('GAME_OVER', {
       enter: () => {
         this.physics.pause();
+        if ((this as any)._dragonSprite) { try { (this as any)._dragonSprite.destroy(); } catch(e){} (this as any)._dragonSprite = null; } (this as any)._dragonInit = false; (this as any)._dragonVisible = false;
         // Stop player visually
         if (this.playerManager?.sprite?.active) {
           this.playerManager.sprite.setAlpha(0.3);
@@ -438,6 +474,36 @@ export default class Game extends Phaser.Scene {
     this.physics.add.overlap(this.playerManager.sprite, this.enemyManager.group, (p, enemy: any) => {
         this.applyEnemyContactDamage(enemy, this.time.now);
     });
+
+    // Sprite projectile collisions
+    const handleSpriteHit = (proj: any, enemy: any) => {
+        if (!proj.active || !enemy.active) return;
+        const stats = enemy.getData('stats');
+        if (!stats) return;
+        let finalDmg = (proj.getData('damage') || 25) * this.playerManager.stats.damageMultiplier;
+        if (stats.eliteAffix?.flatArmor) finalDmg = Math.max(1, finalDmg - stats.eliteAffix.flatArmor);
+        if (stats.frontArmor > 0 && stats.facingAngle !== undefined) {
+          const hitAngle = Phaser.Math.Angle.Between(proj.x, proj.y, enemy.x, enemy.y);
+          if (Math.abs(Phaser.Math.Angle.Wrap(hitAngle - stats.facingAngle)) < 1.2)
+            finalDmg = Math.max(1, finalDmg - stats.frontArmor);
+        }
+        const isCrit = Math.random() < this.playerManager.stats.critChance;
+        if (isCrit) finalDmg *= this.playerManager.stats.critMultiplier;
+        finalDmg = Math.floor(finalDmg);
+        stats.hp -= finalDmg;
+        stats.lastHit = this.time.now;
+        enemy.setTint(isCrit ? 0xffff00 : 0xffffff);
+        this.time.delayedCall(60, () => { if (enemy.active) enemy.clearTint(); });
+        if (proj.getData('poison'))    this.enemyManager.applyStatusEffect(enemy, 'POISONED', { duration: proj.getData('poisonDuration') || 4000, dps: proj.getData('poisonDps') || 15, baseDamage: finalDmg });
+        if (proj.getData('wind'))      this.enemyManager.applyStatusEffect(enemy, 'WIND',    { baseDamage: finalDmg });
+        if (proj.getData('water'))     this.enemyManager.applyStatusEffect(enemy, 'FROZEN',  { duration: proj.getData('slowDuration') || 2000, slowFactor: proj.getData('slowFactor') || 0.4 });
+        if (proj.getData('lightning')) this.enemyManager.applyStatusEffect(enemy, 'STUNNED', { duration: 600, baseDamage: finalDmg });
+        proj.setActive(false).setVisible(false);
+        proj.body.enable = false;
+        if (stats.hp <= 0) this.onEnemyKilled(enemy);
+    };
+    this.physics.add.overlap(this.combatManager.spriteProjectiles, this.enemyManager.group,     handleSpriteHit);
+    this.physics.add.overlap(this.combatManager.spriteProjectiles, this.enemyManager.bossGroup, handleSpriteHit);
 
     this.physics.add.overlap(this.playerManager.sprite, this.enemyManager.projectiles, (p, ep: any) => {
         if (!ep.active) return;
@@ -708,7 +774,7 @@ export default class Game extends Phaser.Scene {
   // Ручная проверка попаданий — fallback для Shape-based projectiles (Ellipse)
   // у которых Phaser overlap иногда десинхронизируется
   checkProjectileHits() {
-    const projs = this.combatManager.projectiles?.getChildren() ?? [];
+    const projs = [...(this.combatManager.projectiles?.getChildren() ?? []), ...(this.combatManager.spriteProjectiles?.getChildren() ?? [])];
     const enemies = this.enemyManager.allEnemies().filter((e: any) => e.active);
     const HIT_RADIUS = 28;
 
@@ -749,7 +815,7 @@ export default class Game extends Phaser.Scene {
       if (activeEnemies.length === 0) return; // nothing to shoot at
 
       this.playerManager.stats.abilities.forEach((ab) => {
-         if (ab.cooldown > 0 && time - ab.lastFired > ab.cooldown) {
+         if (ab.cooldown && ab.cooldown > 0 && time - ab.lastFired > ab.cooldown) {
               if (this.playerManager?.sprite?.active) this.playerManager.playCastAnim();
             const baseDamage = ab.damage || 35;
             const dmgMult = this.playerManager.stats.damageMultiplier;
@@ -779,7 +845,7 @@ export default class Game extends Phaser.Scene {
                         this.time.delayedCall(i * 110, () => {
                             const fp = this.combatManager.spawnProjectile(
                               this.playerManager.sprite.x, this.playerManager.sprite.y,
-                              target, baseDamage, MAGIC_COLORS.FIRE, 820
+                              target, baseDamage, 0xff6600, 820, 'proj_fireball'
                             );
                             // Fireball tags as BURNING on hit (handled via aura already, but tag for future)
                             if (fp) fp.setData('fire', true);
@@ -793,29 +859,56 @@ export default class Game extends Phaser.Scene {
                 const first: any = this.physics.closest(this.playerManager.sprite, activeEnemies);
                 if (first) {
                   const chains = ab.chains || 3;
-                  const chainRange = ab.chainRange || 220;
+                  const chainRange = ab.chainRange || 150;
                   const falloff = ab.chainDamageFalloff || 0.7;
                   let currentDmg = baseDamage * dmgMult;
                   let currentTarget = first;
                   const hit = new Set<any>([first]);
 
+                  const drawZigzagBolt = (x1: number, y1: number, x2: number, y2: number, alpha: number) => {
+                    const g = this.add.graphics().setDepth(200);
+                    const dx = x2 - x1, dy = y2 - y1;
+                    const dist = Math.hypot(dx, dy);
+                    const segments = Math.max(6, Math.floor(dist / 18));
+                    const nx = -dy / dist, ny = dx / dist;
+                    const amp = Math.min(22, dist * 0.12);
+                    const pts: {x: number, y: number}[] = [{x: x1, y: y1}];
+                    for (let i = 1; i < segments; i++) {
+                      const t = i / segments;
+                      const bx = x1 + dx * t, by = y1 + dy * t;
+                      const side = (i % 2 === 0 ? 1 : -1);
+                      const jitter = Phaser.Math.FloatBetween(0.4, 1.0);
+                      pts.push({ x: bx + nx * amp * side * jitter, y: by + ny * amp * side * jitter });
+                    }
+                    pts.push({x: x2, y: y2});
+                    g.lineStyle(5, 0x4466ff, alpha * 0.35);
+                    g.beginPath(); g.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach(p => g.lineTo(p.x, p.y)); g.strokePath();
+                    g.lineStyle(3, 0x66aaff, alpha * 0.75);
+                    g.beginPath(); g.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach(p => g.lineTo(p.x, p.y)); g.strokePath();
+                    g.lineStyle(2, 0xffffff, alpha);
+                    g.beginPath(); g.moveTo(pts[0].x, pts[0].y); pts.slice(1).forEach(p => g.lineTo(p.x, p.y)); g.strokePath();
+                    pts.slice(1, -1).forEach((p, i) => {
+                      if (i % 2 === 0) { g.fillStyle(0xffffff, alpha * 0.9); g.fillRect(p.x - 1, p.y - 1, 2, 2); }
+                    });
+                    return g;
+                  };
+
                   for (let c = 0; c < chains; c++) {
                     const target = currentTarget;
                     const dmg = Math.floor(currentDmg);
                     const crit = isCritBase();
-                    this.time.delayedCall(c * 80, () => {
+                    const hArr = Array.from(hit);
+                    const srcSprite = c === 0 ? this.playerManager.sprite : (hArr[hArr.length - 2] || this.playerManager.sprite);
+                    this.time.delayedCall(c * 90, () => {
                       if (!target.active) return;
                       applyToEnemy(target, crit ? Math.floor(dmg * this.playerManager.stats.critMultiplier) : dmg, crit);
-                      // Lightning arc VFX
-                      const g = this.add.graphics().setDepth(200);
-                      const src = c === 0 ? this.playerManager.sprite : target;
-                      g.lineStyle(2 + (chains - c) * 0.5, MAGIC_COLORS.LIGHTNING, 0.9);
-                      g.lineBetween(src.x, src.y, target.x, target.y);
-                      this.time.delayedCall(120, () => g.destroy());
+                      const boltAlpha = Math.pow(falloff, c);
+                      const g = drawZigzagBolt(srcSprite.x, srcSprite.y, target.x, target.y, boltAlpha);
+                      const flash = this.add.ellipse(target.x, target.y, 30, 30, 0x88ccff, 0.8).setDepth(201);
+                      this.tweens.add({ targets: flash, scale: 2.5, alpha: 0, duration: 200, onComplete: () => flash.destroy() });
+                      this.tweens.add({ targets: g, alpha: 0, duration: 150, onComplete: () => g.destroy() });
                     });
-
-                    // Find next chain target from already-active list
-                    const nearby = activeEnemies.filter((e: any) => 
+                    const nearby = activeEnemies.filter((e: any) =>
                       !hit.has(e) && Phaser.Math.Distance.Between(currentTarget.x, currentTarget.y, e.x, e.y) < chainRange
                     );
                     if (nearby.length === 0) break;
@@ -850,10 +943,29 @@ export default class Game extends Phaser.Scene {
             // --- ICE NOVA (freeze ring) ---
             } else if (ab.id === 'ice_nova') {
                 const range = ab.radius || 190;
-                const nova = this.add.ellipse(this.playerManager.sprite.x, this.playerManager.sprite.y, range * 2, range * 2, MAGIC_COLORS.ICE, 0.45).setDepth(140);
-                this.tweens.add({ targets: nova, alpha: 0, scale: 1.35, duration: 700, onComplete: () => nova.destroy() });
+                const cx = this.playerManager.sprite.x;
+                const cy = this.playerManager.sprite.y;
+
+                // Кольцевой взрыв — спрайт если есть, иначе эллипс
+                if (this.textures.exists('proj_ice_nova')) {
+                  const novaSprite = this.add.sprite(cx, cy, 'proj_ice_nova')
+                    .setDepth(142)
+                    .setOrigin(0.5, 0.5)
+                    .setScrollFactor(1);
+                  novaSprite.setDisplaySize(range * 1.4, range * 1.4);
+                  if (this.anims.exists('proj_ice_nova_burst')) {
+                    novaSprite.play('proj_ice_nova_burst');
+                    novaSprite.once('animationcomplete', () => novaSprite.destroy());
+                  } else {
+                    this.tweens.add({ targets: novaSprite, alpha: 0, duration: 700, onComplete: () => novaSprite.destroy() });
+                  }
+                } else {
+                  const nova = this.add.ellipse(cx, cy, range * 2, range * 2, MAGIC_COLORS.ICE, 0.45).setDepth(140);
+                  this.tweens.add({ targets: nova, alpha: 0, scale: 1.35, duration: 700, onComplete: () => nova.destroy() });
+                }
+
                 activeEnemies.forEach((e: any) => {
-                  if (Phaser.Math.Distance.Between(this.playerManager.sprite.x, this.playerManager.sprite.y, e.x, e.y) < range) {
+                  if (Phaser.Math.Distance.Between(cx, cy, e.x, e.y) < range) {
                     const { dmg, crit } = calcDmg(baseDamage);
                     applyToEnemy(e, dmg, crit);
                     this.enemyManager.applyStatusEffect(e, 'FROZEN', {
@@ -897,7 +1009,7 @@ export default class Game extends Phaser.Scene {
                 if (target) {
                   const p = this.combatManager.spawnProjectile(
                     this.playerManager.sprite.x, this.playerManager.sprite.y,
-                    target, baseDamage, MAGIC_COLORS.POISON, 380
+                    target, baseDamage, 0x00ff44, 380, 'proj_venom'
                   );
                   if (p) {
                     p.setData('poison', true);
@@ -970,14 +1082,12 @@ export default class Game extends Phaser.Scene {
                 if (target) {
                   const wp = this.combatManager.spawnProjectile(
                     this.playerManager.sprite.x, this.playerManager.sprite.y,
-                    target, baseDamage, 0x0088ff, 520
+                    target, baseDamage, 0x0088ff, 520, 'proj_waterball'
                   );
                   if (wp) {
                     wp.setData('water', true);
                     wp.setData('slowFactor', ab.slowFactor || 0.4);
                     wp.setData('slowDuration', ab.slowDuration || 2000);
-                    // Larger projectile visual
-                    wp.setSize(20, 20).setDisplaySize(20, 20);
                   }
                   // VFX — water ring
                   const ring = (this.add as any).ellipse(this.playerManager.sprite.x, this.playerManager.sprite.y, 30, 30, 0x0088ff, 0.6).setDepth(160);
@@ -1109,34 +1219,84 @@ export default class Game extends Phaser.Scene {
                   (this as any)._voidBeamActive = false;
                 });
 
-            // --- DRAGON BREATH (fire cone) ---
+            // --- DRAGON BREATH (orbiting flame tongue) ---
             } else if (ab.id === 'dragon_breath') {
-                const target: any = this.physics.closest(this.playerManager.sprite, activeEnemies);
-                if (target) {
-                  const px = this.playerManager.sprite.x, py = this.playerManager.sprite.y;
-                  const aimAngle = Phaser.Math.Angle.Between(px, py, target.x, target.y);
-                  const halfCone = Phaser.Math.DegToRad((ab.coneAngle || 55) / 2);
-                  const range = ab.coneRange || 280;
-                  // VFX — cone of fire particles
-                  for (let i = 0; i < 8; i++) {
-                    const spread = Phaser.Math.FloatBetween(-halfCone, halfCone);
-                    const a = aimAngle + spread;
-                    const dist = Phaser.Math.FloatBetween(60, range);
-                    const fx = px + Math.cos(a) * dist;
-                    const fy = py + Math.sin(a) * dist;
-                    const flame = (this.add as any).ellipse(fx, fy, Phaser.Math.Between(12, 24), Phaser.Math.Between(12, 24), MAGIC_COLORS.FIRE, 0.8).setDepth(162);
-                    this.tweens.add({ targets: flame, alpha: 0, scaleX: 2, scaleY: 2, duration: 400, delay: i * 40, onComplete: () => flame.destroy() });
-                  }
-                  // Hit all enemies in cone
+                // Спрайт огненного шара вращается вокруг игрока
+                if (!(this as any)._dragonInit) {
+                  (this as any)._dragonInit      = true;
+                  (this as any)._dragonAngle     = 0;
+                  (this as any)._dragonVisible   = false;
+                  (this as any)._dragonShowUntil = 0;
+                  (this as any)._dragonSprite    = null;
+
+                  this.events.on('postupdate', () => {
+                    if (!this.playerManager?.sprite?.active) return;
+
+                    (this as any)._dragonAngle += (ab.rotSpeed || 1.2) / 60;
+
+                    const a  = (this as any)._dragonAngle;
+                    const cx = Math.round(this.playerManager.sprite.x);
+                    const cy = Math.round(this.playerManager.sprite.y);
+                    // Привязка у края игрока (35px), хвост тянется наружу
+                    const bx = cx + Math.cos(a) * 35;
+                    const by = cy + Math.sin(a) * 35;
+
+                    if ((this as any)._dragonVisible) {
+                      if (!(this as any)._dragonSprite) {
+                        if (this.textures.exists('dragon_breath_fireball')) {
+                          // origin(0.0,0.5) + flipX: шар у основания (у игрока), хвост наружу
+                          (this as any)._dragonSprite = this.add.image(bx, by, 'dragon_breath_fireball')
+                            .setDepth(156).setScale(0.6).setOrigin(0.0, 0.5).setFlipX(true);
+                        } else {
+                          (this as any)._dragonSprite = (this.add as any).ellipse(bx, by, 40, 40, 0xff6600, 1)
+                            .setDepth(156);
+                        }
+                      }
+                      const spr = (this as any)._dragonSprite;
+                      if (spr) {
+                        spr.x = bx;
+                        spr.y = by;
+                        // Поворачиваем так чтобы хвост всегда был направлен от игрока
+                        if (spr.setRotation) spr.setRotation(a + Math.PI);
+                        spr.setVisible(true);
+                      }
+                      if (this.time.now > (this as any)._dragonShowUntil) {
+                        (this as any)._dragonVisible = false;
+                        if (spr) spr.setVisible(false);
+                      }
+                    } else {
+                      const spr = (this as any)._dragonSprite;
+                      if (spr) spr.setVisible(false);
+                    }
+                  });
+                }
+
+                // По кулдауну: показать + урон
+                {
+                  const a    = (this as any)._dragonAngle || 0;
+                  const cx   = this.playerManager.sprite.x;
+                  const cy   = this.playerManager.sprite.y;
+                  const bx   = cx + Math.cos(a) * 35;
+                  const by   = cy + Math.sin(a) * 35;
+
+                  (this as any)._dragonVisible   = true;
+                  (this as any)._dragonShowUntil = this.time.now + (ab.activeDuration || 600);
+
+                  // Урон в зоне хвоста (снаружи)
+                  const tipX = cx + Math.cos(a) * (35 + 130);
+                  const tipY = cy + Math.sin(a) * (35 + 130);
+
                   activeEnemies.forEach((e: any) => {
-                    const dist = Phaser.Math.Distance.Between(px, py, e.x, e.y);
-                    if (dist > range) return;
-                    const angleToEnemy = Phaser.Math.Angle.Between(px, py, e.x, e.y);
-                    const angleDiff = Math.abs(Phaser.Math.Angle.Wrap(angleToEnemy - aimAngle));
-                    if (angleDiff < halfCone) {
+                    if (Phaser.Math.Distance.Between(tipX, tipY, e.x, e.y) < (ab.dmgRadius || 70)) {
                       const { dmg, crit } = calcDmg(baseDamage);
                       applyToEnemy(e, dmg, crit);
-                      this.enemyManager.applyStatusEffect(e, 'BURNING', { duration: ab.burnDuration || 3000, dps: baseDamage * 0.3 });
+                      this.enemyManager.applyStatusEffect(e, 'BURNING', {
+                        duration: ab.burnDuration || 3000,
+                        dps: baseDamage * 0.35,
+                        baseDamage: dmg
+                      });
+                      const hit = (this.add as any).ellipse(e.x, e.y, 30, 30, 0xff6600, 0.85).setDepth(163);
+                      this.tweens.add({ targets: hit, scale: 2.2, alpha: 0, duration: 200, onComplete: () => hit.destroy() });
                     }
                   });
                   ab.lastFired = time;
