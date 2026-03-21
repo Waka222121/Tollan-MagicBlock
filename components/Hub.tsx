@@ -6,8 +6,15 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
     { player_name: 'NEON_WRAITH', wave: Math.max(1, bestWave + 4), score: 0 },
     { player_name: 'ARC_SYN', wave: Math.max(1, bestWave + 2), score: 0 },
     { player_name: playerName, wave: Math.max(1, bestWave), score: highScore },
+    { player_name: 'VIOLET_CORE', wave: Math.max(1, bestWave - 1), score: 0 },
+    { player_name: 'BLADE_BYTE', wave: Math.max(1, bestWave - 2), score: 0 },
+    { player_name: 'PHASE_ZERO', wave: Math.max(1, bestWave - 3), score: 0 },
+    { player_name: 'EMBER_NODE', wave: Math.max(1, bestWave - 4), score: 0 },
+    { player_name: 'RIFT_RUNNER', wave: Math.max(1, bestWave - 5), score: 0 },
+    { player_name: 'OMEGA_PING', wave: Math.max(1, bestWave - 6), score: 0 },
+    { player_name: 'NOVA_LOOP', wave: Math.max(1, bestWave - 7), score: 0 },
   ];
-  const rows = (leaderboard.length ? leaderboard : fallbackBoard).slice(0, 3);
+  const rows = (leaderboard.length ? leaderboard : fallbackBoard).slice(0, 10);
   return (
     <div style={{
       position:'relative', display:'flex', flexDirection:'column',
@@ -50,7 +57,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
         </header>
 
         {/* MAIN */}
-        <main style={{flex:1,display:'grid',gridTemplateColumns:'7fr 5fr',gap:'32px',alignItems:'center',minHeight:0}}>
+        <main style={{flex:1,display:'grid',gridTemplateColumns:'6fr 6fr',gap:'32px',alignItems:'stretch',minHeight:0}}>
 
           {/* LEFT */}
           <div style={{display:'flex',flexDirection:'column',justifyContent:'center'}}>
@@ -102,7 +109,9 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
             display:'grid',gridTemplateColumns:'1fr',
             background:'linear-gradient(180deg, rgba(28,8,52,0.92), rgba(11,5,24,0.98))',
             border:'1px solid rgba(192,132,252,0.35)',
-            boxShadow:'0 0 40px rgba(139,92,246,0.22), 0 20px 60px rgba(0,0,0,0.55)'
+            boxShadow:'0 0 40px rgba(139,92,246,0.22), 0 20px 60px rgba(0,0,0,0.55)',
+            borderRadius:'14px',
+            overflow:'hidden'
           }}>
             <div style={{padding:'18px',borderBottom:'1px solid rgba(192,132,252,0.2)'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'14px'}}>
@@ -122,7 +131,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                   REFRESH
                 </button>
               </div>
-              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'8px',fontSize:'10px',textTransform:'uppercase',letterSpacing:'0.14em',marginTop:'10px'}}>
+              <div className="font-mono" style={{display:'flex',flexDirection:'column',gap:'5px',fontSize:'9px',textTransform:'uppercase',letterSpacing:'0.14em',marginTop:'10px'}}>
                 {rows.map((entry, i) => (
                   <div key={`${entry.player_name}_${i}`}
                     style={{
@@ -133,7 +142,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
                       color: entry.player_name === playerName ? '#ffffff' : '#ddd6fe',
                       background: entry.player_name === playerName ? 'linear-gradient(90deg, rgba(168,85,247,0.35), rgba(168,85,247,0.1))' : 'rgba(13,7,31,0.28)',
                       border: entry.player_name === playerName ? '1px solid rgba(216,180,254,0.95)' : '1px solid rgba(167,139,250,0.32)',
-                      padding:'8px 10px'
+                      padding:'5px 10px'
                     }}>
                     <span style={{color: '#c084fc', fontWeight:700}}>#{i + 1}</span>
                     <span>{String(entry.player_name || '').toUpperCase().replace(/\s+/g, '_')}</span>
