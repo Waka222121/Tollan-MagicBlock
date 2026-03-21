@@ -1419,6 +1419,7 @@ export class LootSystem {
 export class CombatManager {
     scene: Phaser.Scene;
     projectiles: Phaser.Physics.Arcade.Group;
+    spriteProjectiles: Phaser.Physics.Arcade.Group;
 
     // Сохраняем ссылку на сцену для создания/движения снарядов
     constructor(scene) {

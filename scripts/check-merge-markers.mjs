@@ -1,7 +1,15 @@
 import { execSync } from 'node:child_process';
 
-const pattern = '^<<<<<<<|^=======|^>>>>>>>|>>>> main|<<<<<<< ';
-const cmd = `rg "${pattern}" -n --glob '!dist/**' --glob '!node_modules/**' --glob '!scripts/check-merge-markers.mjs'`;
+const cmd = [
+  'rg',
+  "-n",
+  "--glob '!dist/**'",
+  "--glob '!node_modules/**'",
+  "--glob '!**/check-merge-markers.mjs'",
+  "-e '^<<<<<<< '",
+  "-e '^=======$'",
+  "-e '^>>>>>>> '",
+].join(' ');
 
 try {
   const out = execSync(cmd, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
