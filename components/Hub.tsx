@@ -12,10 +12,22 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
       userSelect:'none', pointerEvents:'auto', background:'#000000'
     }}>
       {/* Background */}
-      <div style={{position:'absolute',inset:0,opacity:0.08,pointerEvents:'none'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 50% 50%,#b26ad414 0%,transparent 50%)'}}></div>
-        <div style={{position:'absolute',top:'-20%',left:'-10%',width:'60%',height:'60%',background:'#b26ad40a',filter:'blur(120px)',borderRadius:'50%'}}></div>
-        <div style={{position:'absolute',bottom:'-10%',right:'-5%',width:'50%',height:'50%',background:'#b26ad406',filter:'blur(100px)',borderRadius:'50%'}}></div>
+      <div style={{position:'absolute',inset:0,pointerEvents:'none'}}>
+        <div
+          style={{
+            position:'absolute',
+            inset:0,
+            background:'radial-gradient(120% 120% at 42% 58%, rgba(40, 18, 66, 0.85) 0%, rgba(13, 2, 33, 0.96) 48%, #05000f 100%)'
+          }}
+        ></div>
+        <div
+          style={{
+            position:'absolute',
+            inset:0,
+            background:'radial-gradient(55% 48% at 51% 64%, rgba(186, 113, 255, 0.22) 0%, rgba(126, 74, 188, 0.14) 36%, transparent 72%)',
+            filter:'blur(14px)'
+          }}
+        ></div>
       </div>
       <div className="absolute inset-0 bg-grid opacity-5 pointer-events-none"></div>
 
