@@ -185,7 +185,7 @@ const GameUI = ({
               const eb        = choice.elementBadge;
               return (
                 <button key={choice.id} onClick={() => onSelectUpgrade(choice)}
-                  className="btn-stone flex-1 min-h-[460px] p-10 flex flex-col items-center text-center transition-all group overflow-hidden relative border-2 border-purple-500/70">
+                  className="btn-stone flex-1 min-h-[460px] p-10 flex flex-col items-center text-center transition-all group overflow-hidden relative border-2 border-purple-500/70 rounded-2xl">
                   <div className="metal-shine"></div>
 
                   {/* Element badge top-left */}
