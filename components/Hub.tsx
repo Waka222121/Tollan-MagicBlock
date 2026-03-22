@@ -17,15 +17,17 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
           style={{
             position:'absolute',
             inset:0,
-            background:'radial-gradient(120% 120% at 42% 58%, rgba(40, 18, 66, 0.85) 0%, rgba(13, 2, 33, 0.96) 48%, #05000f 100%)'
+            backgroundImage:"url('/assets/floor_tile.jpg')",
+            backgroundSize:'cover',
+            backgroundPosition:'center',
+            backgroundRepeat:'no-repeat'
           }}
         ></div>
         <div
           style={{
             position:'absolute',
             inset:0,
-            background:'radial-gradient(55% 48% at 51% 64%, rgba(186, 113, 255, 0.22) 0%, rgba(126, 74, 188, 0.14) 36%, transparent 72%)',
-            filter:'blur(14px)'
+            background:'linear-gradient(180deg, rgba(8, 4, 18, 0.52) 0%, rgba(10, 4, 20, 0.62) 100%)'
           }}
         ></div>
       </div>
