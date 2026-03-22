@@ -44,6 +44,27 @@ function saveLocalLeaderboard(rows: WaveLeaderboardEntry[]) {
   localStorage.setItem(LOCAL_LEADERBOARD_KEY, JSON.stringify(rows));
 }
 
+
+function normalizePlayerName(name: string) {
+  return String(name || '').trim().toLowerCase();
+}
+
+function isBetterEntry(next: WaveLeaderboardEntry, prev: WaveLeaderboardEntry) {
+  if (next.wave !== prev.wave) return next.wave > prev.wave;
+  if (next.score !== prev.score) return next.score > prev.score;
+  return next.created_at < prev.created_at;
+}
+
+function uniqueBestByPlayer(rows: WaveLeaderboardEntry[]) {
+  const bestByName = new Map<string, WaveLeaderboardEntry>();
+  for (const row of rows) {
+    const key = normalizePlayerName(row.player_name);
+    if (!key) continue;
+    const prev = bestByName.get(key);
+    if (!prev || isBetterEntry(row, prev)) bestByName.set(key, row);
+  }
+  return [...bestByName.values()];
+}
 function sortLeaderboard(rows: WaveLeaderboardEntry[]) {
   return [...rows].sort((a, b) => (b.wave - a.wave) || (b.score - a.score) || (a.created_at.localeCompare(b.created_at)));
 }
@@ -58,7 +79,7 @@ function getHeaders() {
 
 export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEntry[]> {
   if (!hasConfig) {
-    return sortLeaderboard(loadLocalLeaderboard()).slice(0, limit);
+    return sortLeaderboard(uniqueBestByPlayer(loadLocalLeaderboard())).slice(0, limit);
   }
 
   const url = `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}?select=id,player_name,wave,score,created_at&order=wave.desc,score.desc,created_at.asc&limit=${limit}`;
@@ -66,7 +87,8 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
   if (!res.ok) {
     throw new Error(`Leaderboard fetch failed: ${res.status}`);
   }
-  return res.json();
+  const rows = await res.json();
+  return sortLeaderboard(uniqueBestByPlayer(rows)).slice(0, limit);
 }
 
 export async function submitWaveResult({ playerName, wave, score }: SubmitPayload): Promise<void> {
@@ -78,14 +100,26 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
 
   if (!hasConfig) {
     const rows = loadLocalLeaderboard();
-    rows.push({
+    const now = new Date().toISOString();
+    const incoming: WaveLeaderboardEntry = {
       id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
       player_name: payload.player_name,
       wave: payload.wave,
       score: payload.score,
-      created_at: new Date().toISOString(),
-    });
-    saveLocalLeaderboard(sortLeaderboard(rows).slice(0, 64));
+      created_at: now,
+    };
+
+    const key = normalizePlayerName(payload.player_name);
+    const idx = rows.findIndex((row) => normalizePlayerName(row.player_name) === key);
+    if (idx >= 0) {
+      if (isBetterEntry(incoming, rows[idx])) {
+        rows[idx] = { ...rows[idx], ...incoming };
+      }
+    } else {
+      rows.push(incoming);
+    }
+
+    saveLocalLeaderboard(sortLeaderboard(uniqueBestByPlayer(rows)).slice(0, 64));
     return;
   }
 

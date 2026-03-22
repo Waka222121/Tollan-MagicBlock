@@ -9,6 +9,8 @@ const MENU_BG_CANDIDATES = [
   '/menu-background.jpg',
 ];
 
+
+
 const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
   const [draftName, setDraftName] = useState(playerName || '');
   const [menuBackgroundUrl, setMenuBackgroundUrl] = useState(MENU_BG_CANDIDATES[0]);
@@ -52,7 +54,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
           style={{
             position:'absolute',
             inset:0,
-            backgroundImage:`url(${menuBackgroundUrl})`,
+            backgroundImage:"url('/assets/menu-background.png?v=20260322b')",
             backgroundSize:'cover',
             backgroundPosition:'center',
             backgroundRepeat:'no-repeat',
