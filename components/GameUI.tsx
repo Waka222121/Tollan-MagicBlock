@@ -168,19 +168,24 @@ const GameUI = ({
 
       {/* ── LEVEL UP MENU ───────────────────────────────────────────── */}
       {gameState === GameState.LEVEL_UP && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl pointer-events-auto flex flex-col items-center justify-center z-[200] p-12">
-          <div className="text-center mb-16">
+        <div className="fixed inset-0 pointer-events-auto flex flex-col items-center justify-center z-[200] p-12 overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_65%,rgba(33,14,56,0.90)_0%,rgba(10,2,23,0.96)_52%,#04000d_100%)]"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(52%_44%_at_50%_61%,rgba(186,113,255,0.20)_0%,rgba(126,74,188,0.10)_36%,transparent_72%)] blur-xl"></div>
+            <div className="absolute inset-0 backdrop-blur-[1px]"></div>
+          </div>
+          <div className="text-center mb-16 relative z-10">
             <span className="text-purple-500 text-[12px] font-black tracking-[1em] uppercase mb-4 block">Ascension_Protocol</span>
             <h2 className="text-8xl font-pirata italic text-white tracking-widest uppercase animate-golden-pulse">Ancient Adaptation</h2>
           </div>
-          <div className="flex gap-8 max-w-7xl w-full">
+          <div className="flex gap-8 max-w-7xl w-full relative z-10">
             {upgradeChoices.length > 0 ? upgradeChoices.map((choice) => {
               const isUpgrade = choice.type === 'UPGRADE_ABILITY';
               const isNew     = choice.type === 'NEW_ABILITY';
               const eb        = choice.elementBadge;
               return (
                 <button key={choice.id} onClick={() => onSelectUpgrade(choice)}
-                  className="btn-stone flex-1 p-10 flex flex-col items-center text-center transition-all group overflow-hidden relative border-2 border-purple-500/70">
+                  className="btn-stone flex-1 min-h-[460px] p-10 flex flex-col items-center text-center transition-all group overflow-hidden relative border-2 border-purple-500/70">
                   <div className="metal-shine"></div>
 
                   {/* Element badge top-left */}
