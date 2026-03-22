@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import menuBackground from '../mintty.2026-02-24_00-51-57.png';
 
 const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
   const [draftName, setDraftName] = useState(playerName || '');
@@ -17,7 +18,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
           style={{
             position:'absolute',
             inset:0,
-            backgroundImage:"url('/assets/floor_tile.jpg')",
+            backgroundImage:`url(${menuBackground})`,
             backgroundSize:'cover',
             backgroundPosition:'center',
             backgroundRepeat:'no-repeat'
@@ -27,7 +28,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
           style={{
             position:'absolute',
             inset:0,
-            background:'linear-gradient(180deg, rgba(8, 4, 18, 0.52) 0%, rgba(10, 4, 20, 0.62) 100%)'
+            background:'linear-gradient(180deg, rgba(6, 6, 14, 0.30) 0%, rgba(10, 8, 20, 0.42) 100%)'
           }}
         ></div>
       </div>
