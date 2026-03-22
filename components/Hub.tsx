@@ -11,7 +11,9 @@ const MENU_BG_CANDIDATES = [
 
 
 
-const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
+
+
+const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard }) => {
   const [draftName, setDraftName] = useState(playerName || '');
   const [menuBackgroundUrl, setMenuBackgroundUrl] = useState(MENU_BG_CANDIDATES[0]);
 
