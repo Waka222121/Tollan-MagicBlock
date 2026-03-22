@@ -18,10 +18,11 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
           style={{
             position:'absolute',
             inset:0,
-            backgroundImage:`url(${menuBackground})`,
+            backgroundImage:"url('/assets/menu-background.png')",
             backgroundSize:'cover',
             backgroundPosition:'center',
-            backgroundRepeat:'no-repeat'
+            backgroundRepeat:'no-repeat',
+            backgroundColor:'#0b0b16'
           }}
         ></div>
         <div
