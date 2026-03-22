@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import menuBackground from '../mintty.2026-02-24_00-51-57.png';
 
 const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
   const [draftName, setDraftName] = useState(playerName || '');
