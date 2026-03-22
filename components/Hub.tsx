@@ -1,7 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+
+
+const MENU_BG_CANDIDATES = [
+  '/assets/menu-background.png',
+  '/assets/menu-background.jpg',
+  '/assets/menu_background.png',
+  '/menu-background.png',
+  '/menu-background.jpg',
+];
 
 const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
   const [draftName, setDraftName] = useState(playerName || '');
+  const [menuBackgroundUrl, setMenuBackgroundUrl] = useState(MENU_BG_CANDIDATES[0]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const tryLoad = async () => {
+      for (const src of MENU_BG_CANDIDATES) {
+        const ok = await new Promise<boolean>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+          img.src = `${src}?v=20260322`;
+        });
+
+        if (ok) {
+          if (!cancelled) setMenuBackgroundUrl(src);
+          return;
+        }
+      }
+    };
+
+    tryLoad();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const rows = leaderboard.slice(0, 5);
   const filledRows = [...rows];
   while (filledRows.length < 5) filledRows.push(null);
@@ -17,7 +52,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
           style={{
             position:'absolute',
             inset:0,
-            backgroundImage:"url('/assets/menu-background.png?v=20260322')",
+            backgroundImage:`url(${menuBackgroundUrl})`,
             backgroundSize:'cover',
             backgroundPosition:'center',
             backgroundRepeat:'no-repeat',
