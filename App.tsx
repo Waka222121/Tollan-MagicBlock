@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameState } from './types';
 import Hub from './components/Hub';
 import GameEngine from './GameEngine';
-import AITerminal from './components/AITerminal';
 import { fetchWaveLeaderboard, submitWaveResult, type WaveLeaderboardEntry } from './lib/leaderboardClient';
 
 const App = () => {
@@ -12,7 +11,6 @@ const App = () => {
   const [totalKills,   setTotalKills]   = useState(0);
   const [bestWave,     setBestWave]     = useState(1);
   const [lastRunStats, setLastRunStats] = useState(null);
-  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
   const [playerName, setPlayerName] = useState(() => initialStoredName || '');
   const [leaderboard, setLeaderboard] = useState<WaveLeaderboardEntry[]>([]);
   const [lbStatus, setLbStatus] = useState<'idle' | 'loading' | 'error'>('idle');
@@ -33,7 +31,7 @@ const App = () => {
       setLeaderboard(rows);
       setLbStatus('idle');
     } catch (e) {
-      console.warn('[leaderboard] failed to fetch rows', e);
+      if (import.meta.env.DEV) console.warn('[leaderboard] failed to fetch rows', e);
       setLbStatus('error');
     }
   }, []);
@@ -45,7 +43,7 @@ const App = () => {
     setLastRunStats(stats);
     setGameState(GameState.GAMEOVER);
     submitWaveResult({ playerName, wave: stats.wave || 1, score: stats.score || 0 }).then(refreshLeaderboard).catch((e) => {
-      console.warn('[leaderboard] failed to submit row', e);
+      if (import.meta.env.DEV) console.warn('[leaderboard] failed to submit row', e);
     });
   }, [playerName, refreshLeaderboard]);
 
@@ -83,7 +81,6 @@ const App = () => {
           leaderboard={leaderboard}
           leaderboardStatus={lbStatus}
           onRefreshLeaderboard={refreshLeaderboard}
-          onOpenTerminal={() => setIsTerminalOpen(true)}
         />
       )}
 
@@ -99,9 +96,6 @@ const App = () => {
         />
       )}
 
-      {isTerminalOpen && (
-        <AITerminal onClose={() => setIsTerminalOpen(false)} />
-      )}
     </div>
   );
 };
