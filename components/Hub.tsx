@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 
-const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard, onOpenTerminal }) => {
+const MENU_BG_CANDIDATES = ['/assets/menu-background.png?v=20260322b'];
+
+const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard }) => {
   const [draftName, setDraftName] = useState(playerName || '');
   const rows = leaderboard.slice(0, 5);
   const filledRows = [...rows];
@@ -12,10 +14,25 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
       userSelect:'none', pointerEvents:'auto', background:'#000000'
     }}>
       {/* Background */}
-      <div style={{position:'absolute',inset:0,opacity:0.08,pointerEvents:'none'}}>
-        <div style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',background:'radial-gradient(circle at 50% 50%,#b26ad414 0%,transparent 50%)'}}></div>
-        <div style={{position:'absolute',top:'-20%',left:'-10%',width:'60%',height:'60%',background:'#b26ad40a',filter:'blur(120px)',borderRadius:'50%'}}></div>
-        <div style={{position:'absolute',bottom:'-10%',right:'-5%',width:'50%',height:'50%',background:'#b26ad406',filter:'blur(100px)',borderRadius:'50%'}}></div>
+      <div style={{position:'absolute',inset:0,pointerEvents:'none'}}>
+        <div
+          style={{
+            position:'absolute',
+            inset:0,
+            backgroundImage:`url(${MENU_BG_CANDIDATES[0]})`,
+            backgroundSize:'cover',
+            backgroundPosition:'center',
+            backgroundRepeat:'no-repeat',
+            backgroundColor:'#0b0b16'
+          }}
+        ></div>
+        <div
+          style={{
+            position:'absolute',
+            inset:0,
+            background:'linear-gradient(180deg, rgba(6, 6, 14, 0.30) 0%, rgba(10, 8, 20, 0.42) 100%)'
+          }}
+        ></div>
       </div>
       <div className="absolute inset-0 bg-grid opacity-5 pointer-events-none"></div>
 

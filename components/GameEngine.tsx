@@ -5,7 +5,6 @@ import GameUI from './components/GameUI';
 import Game from './game/Game';
 import { UpgradeSystem } from './game/UpgradeSystem';
 import { GameBridge } from './game/GameBridge';
-import DevPanel from './components/DevPanel';
 
 interface GameEngineProps {
   runId: number;
@@ -150,7 +149,6 @@ const GameEngine = ({ runId, state, onStateChange, onGameOver, onExit, onRetry, 
         </div>
       )}
       <div ref={containerRef} className="w-full h-full" />
-      {import.meta.env.DEV && <DevPanel gameRef={gameRef} />}
       {playerData && (
         <GameUI
           gameState={state}

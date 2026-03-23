@@ -1,167 +1,96 @@
 <div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+  <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
 # Tollan MagicBlock
 
-## Запуск обновлённого репозитория с GitHub
+Аркадная игра на **React + Vite + Phaser**.
 
-### 1) Клонирование
-```bash
-git clone <URL_ВАШЕГО_РЕПОЗИТОРИЯ>
-cd Tollan-MagicBlock
-```
+## Быстрый старт
 
-### 2) Установка зависимостей
+### 1) Требования
+- Node.js 18+
+- npm 9+
+
+### 2) Установка
 ```bash
 npm install
 ```
 
-### 3) Настройка окружения
-< codex/check-models-and-textures-for-bugs-ls3ifd
-=
- codex/check-models-and-textures-for-bugs-saqghz
- main
-Скопируйте шаблон и укажите новый ключ Gemini:
+### 3) Локальный запуск
 ```bash
-cp .env.local.example .env.local
-```
-
-Откройте `.env.local` и вставьте ключ:
-```bash
-GEMINI_API_KEY=your_new_api_key_here
-```
-
-### 4) Проверка ассетов (моделей/текстур)
-Перед запуском рекомендуется прогнать валидацию спрайтшитов:
-```bash
-npm run check:assets
-```
-
-### 5) Запуск в режиме разработки
-```bash
- codex/check-models-and-textures-for-bugs-ls3ifd
-
-
-Создайте файл `.env.local` и укажите ключ Gemini:
-```bash
-GEMINI_API_KEY=your_key_here
-```
-
-### 4) Проверка ассетов (моделей/текстур)
-Перед запуском рекомендуется прогнать валидацию спрайтшитов:
-```bash
-npm run check:assets
-```
-
-### 5) Запуск в режиме разработки
-```bash
- codex/check-models-and-textures-for-bugs-k8e2bj
- main
- main
-# стандартный режим
 npm run dev
+```
 
-# явный запуск для доступа по сети/в контейнере
+По умолчанию Vite даст URL в консоли (обычно `http://localhost:5173`).
+
+Для запуска в контейнере/по сети:
+```bash
 npm run dev:host
 ```
- codex/check-models-and-textures-for-bugs-ls3ifd
 
- codex/check-models-and-textures-for-bugs-saqghz
-=
-=
-npm run dev
-```
- codex/check-models-and-textures-for-bugs-32vj10
-Откройте адрес из консоли (обычно `http://localhost:5173`).
-
-> main
- main
- main
-Откройте адрес из консоли. В этом репозитории по умолчанию:
-- локально: `http://localhost:3000/`
-- по сети: `http://<ВАШ_IP>:3000/`
-
-Если после шага 5 видите `ERR_CONNECTION_REFUSED`:
- codex/check-models-and-textures-for-bugs-ls3ifd
-
-< codex/check-models-and-textures-for-bugs-saqghz
-
- codex/check-models-and-textures-for-bugs-k8e2bj
-> main
- main
-1. Проверьте, что в консоли после запуска есть строка `VITE ready` и адрес `http://localhost:3000/`.
-2. Убедитесь, что открываете именно порт **3000** (а не 5173).
-3. Для удалённой машины/контейнера используйте `npm run dev:host`, затем адрес из строки `Network`.
-4. Проверьте, что порт 3000 не блокируется фаерволом/антивирусом.
-5. Если порт занят, запустите на другом порту:
-   ```bash
-   npm run dev:host -- --port 4173
-   ```
- codex/check-models-and-textures-for-bugs-ls3ifd
-
- codex/check-models-and-textures-for-bugs-saqghz
-
-
-1. Проверьте, что в консоли после `npm run dev` есть строка `VITE ready` и адрес `http://localhost:3000/`.
-2. Убедитесь, что открываете именно порт **3000** (а не 5173).
-3. Если запускаете проект на удалённой машине/сервере, открывайте адрес из строки `Network` (или пробросьте порт 3000).
-4. Проверьте, что порт 3000 не блокируется фаерволом/антивирусом.
-5. Перезапустите сервер:
-   ```bash
-   npm run dev
-   ```
- main
- main
- main
- main
-
-### 6) Production build
+### 4) Production-сборка
 ```bash
 npm run build
 npm run preview
 ```
 
- codex/check-models-and-textures-for-bugs-ls3ifd
+---
+
+## Переменные окружения
+
+Для AI-функций (если используются) создайте `.env.local`:
+```bash
+GEMINI_API_KEY=your_key_here
+```
+
+Для онлайн-таблицы лидеров (Supabase):
+```bash
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+VITE_LEADERBOARD_TABLE=leaderboard_waves
+```
+
+Если Supabase не задан, leaderboard автоматически работает через локальный fallback (`localStorage`).
 
 ---
- main
 
-## Notes
-- Node.js 18+ рекомендуется.
-- Если `npm run check:assets` показывает `WARN` про `unused remainder`, это не всегда критичная ошибка, но значит в спрайтшите есть незадействованная область.
- codex/check-models-and-textures-for-bugs-ls3ifd
+## Релизный чек-лист
 
-## Архитектура проекта
-
-### Основные слои
-- `App.tsx`: роутинг экранов приложения (Hub, GameEngine, AI Terminal).
-- `GameEngine.tsx`: жизненный цикл Phaser и синхронизация данных в React.
-- `game/Game.ts`: основная игровая сцена Phaser.
-- `game/GameManagers.ts`: ядро игровых менеджеров (игрок, враги, бой, лут).
-- `components/`: UI-обвязка меню и HUD.
-- `components/ai/`: AI-модули терминала (чат, forge, voice, media).
-- `lib/aiClient.ts`: единая точка работы с Gemini-клиентом и ошибками.
-- `scripts/check-model-texture-assets.mjs`: проверка размеров текстур и спрайтшитов.
-
-### Поток данных
-1. `index.tsx` монтирует `App`.
-2. `App` создаёт `GameEngine` при переходе в игру.
-3. `GameEngine` поднимает Phaser `Game` сцену.
-4. Сцена отправляет состояние в React через `GameBridge.onSyncData`.
-5. React рисует HUD через `GameUI`.
-
-### Где что менять
-- Геймплей, враги, волны: `game/Game.ts`, `game/GameManagers.ts`, `constants.ts`.
-- Визуальные спрайты врагов: `game/EnemySpriteRegistry.ts` и `public/assets`.
-- Интерфейс игры: `components/GameUI.tsx`, `components/Hub.tsx`.
-- AI-функции: `components/ai/*` и `lib/aiClient.ts`.
-
-## CI проверка
-Рекомендуемый pipeline:
+Перед публичным релизом:
 ```bash
-npm ci
 npm run check:merge-markers
 npm run check:assets
 npm run build
+```
+
+Рекомендуется дополнительно:
+- проверить, что background ассеты находятся в `public/assets`
+- открыть `npm run preview` и вручную проверить:
+  - главное меню
+  - старт игры
+  - экран LEVEL_UP
+  - GAMEOVER и возврат в меню
+  - leaderboard (локальный и с Supabase)
+
+---
+
+## Архитектура
+
+- `index.tsx` — точка входа React.
+- `App.tsx` — состояние приложения и переключение экранов.
+- `GameEngine.tsx` — инициализация Phaser и связь React ↔ Phaser.
+- `game/` — игровая логика.
+- `components/Hub.tsx` — главное меню.
+- `components/GameUI.tsx` — HUD/пауза/level-up/gameover UI.
+- `lib/leaderboardClient.ts` — клиент leaderboard (Supabase + local fallback).
+
+---
+
+## Полезные команды
+
+```bash
+npm run check:assets
+npm run check:merge-markers
+npm run create:enemy-entry
 ```
