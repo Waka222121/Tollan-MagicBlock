@@ -1,17 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
 
-const MENU_BG_CANDIDATES = [
-  '/assets/menu-background.png',
-  '/assets/menu-background.jpg',
-  '/assets/menu_background.png',
-  '/menu-background.png',
-  '/menu-background.jpg',
-];
-
-
-
-
 
 const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU', isNamePromptOpen = false, onPlayerNameChange, leaderboard = [], leaderboardStatus = 'idle', onRefreshLeaderboard }) => {
   const [draftName, setDraftName] = useState(playerName || '');
