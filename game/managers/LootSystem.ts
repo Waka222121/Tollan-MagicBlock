@@ -1,0 +1,1 @@
+export { LootSystem } from '../GameManagers';

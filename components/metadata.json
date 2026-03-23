@@ -1,0 +1,9 @@
+{
+  "name": "TOLLAN MagicBlock",
+  "description": "A high-performance Bullet Heaven Action Roguelike prototype powered by Phaser 3 and MagicBlock protocol.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
