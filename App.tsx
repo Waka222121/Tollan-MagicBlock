@@ -327,7 +327,7 @@ const App = () => {
     setTotalKills(prev => prev + stats.kills);
     setBestWave(prev => Math.max(prev, stats.wave || 1));
     setLastRunStats(stats);
-    setGameState(GameState.GAMEOVER);
+    setGameState(GameState.MENU);
  
     submitWaveResult({ playerName, wave: stats.wave || 1, score: stats.score || 0 })
       .then(refreshLeaderboard)
@@ -380,18 +380,6 @@ const App = () => {
           onExit={backToMenu}
           onRetry={startGame}
           lastRunStats={lastRunStats}
-        />
-      )}
- 
-      {gameState === GameState.GAMEOVER && (
-        <GameOverOverlay
-          playerName={playerName}
-          lastRunStats={lastRunStats}
-          leaderboard={leaderboard}
-          lbStatus={lbStatus}
-          onPlayAgain={startGame}
-          onMainMenu={backToMenu}
-          onRefresh={refreshLeaderboard}
         />
       )}
  
