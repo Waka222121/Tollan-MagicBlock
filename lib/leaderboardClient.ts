@@ -76,6 +76,7 @@ function getHeaders() {
     apikey: SUPABASE_ANON_KEY!,
     Authorization: `Bearer ${SUPABASE_ANON_KEY!}`,
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
   };
 }
 
@@ -94,9 +95,10 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
       `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}` +
       `?select=id,player_name,wave,score,created_at` +
       `&order=wave.desc,score.desc,created_at.asc` +
-      `&limit=${pageSize}&offset=${offset}`;
+      `&limit=${pageSize}&offset=${offset}` +
+      `&_ts=${Date.now()}`;
 
-    const res = await fetch(url, { headers: getHeaders() });
+    const res = await fetch(url, { headers: getHeaders(), cache: 'no-store' });
     if (!res.ok) {
       throw new Error(`Leaderboard fetch failed: ${res.status}`);
     }
@@ -153,6 +155,7 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
   const url = `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}`;
   const res = await fetch(url, {
     method: 'POST',
+    cache: 'no-store',
     headers: {
       ...getHeaders(),
       Prefer: 'return=minimal',

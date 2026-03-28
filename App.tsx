@@ -352,6 +352,29 @@ const App = () => {
     gameState === GameState.PAUSED;
  
   useEffect(() => { refreshLeaderboard(); }, [refreshLeaderboard]);
+
+  useEffect(() => {
+    if (gameState !== GameState.MENU) return;
+    const pollId = window.setInterval(() => {
+      refreshLeaderboard();
+    }, 3000);
+
+    const handleVisibilitySync = () => {
+      if (document.visibilityState === 'visible') {
+        refreshLeaderboard();
+      }
+    };
+    const handleFocusSync = () => refreshLeaderboard();
+
+    document.addEventListener('visibilitychange', handleVisibilitySync);
+    window.addEventListener('focus', handleFocusSync);
+
+    return () => {
+      window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', handleVisibilitySync);
+      window.removeEventListener('focus', handleFocusSync);
+    };
+  }, [gameState, refreshLeaderboard]);
  
   return (
     <div className="w-full h-screen relative overflow-hidden select-none">
