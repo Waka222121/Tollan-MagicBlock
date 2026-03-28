@@ -357,9 +357,23 @@ const App = () => {
     if (gameState !== GameState.MENU) return;
     const pollId = window.setInterval(() => {
       refreshLeaderboard();
-    }, 10000);
+    }, 3000);
 
-    return () => window.clearInterval(pollId);
+    const handleVisibilitySync = () => {
+      if (document.visibilityState === 'visible') {
+        refreshLeaderboard();
+      }
+    };
+    const handleFocusSync = () => refreshLeaderboard();
+
+    document.addEventListener('visibilitychange', handleVisibilitySync);
+    window.addEventListener('focus', handleFocusSync);
+
+    return () => {
+      window.clearInterval(pollId);
+      document.removeEventListener('visibilitychange', handleVisibilitySync);
+      window.removeEventListener('focus', handleFocusSync);
+    };
   }, [gameState, refreshLeaderboard]);
  
   return (
