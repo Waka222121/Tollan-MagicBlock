@@ -72,12 +72,17 @@ function sortLeaderboard(rows: WaveLeaderboardEntry[]) {
 }
 
 function getHeaders() {
-  return {
+  const headers: Record<string, string> = {
     apikey: SUPABASE_ANON_KEY!,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY!}`,
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache',
   };
+  // New Supabase publishable keys (`sb_publishable_...`) are not JWTs and should
+  // not be sent as a Bearer token.
+  if (!SUPABASE_ANON_KEY?.startsWith('sb_publishable_')) {
+    headers.Authorization = `Bearer ${SUPABASE_ANON_KEY!}`;
+  }
+  return headers;
 }
 
 export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEntry[]> {
