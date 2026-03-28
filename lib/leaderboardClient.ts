@@ -6,6 +6,8 @@ export interface WaveLeaderboardEntry {
   created_at: string;
 }
 
+export type LeaderboardMode = 'global' | 'local';
+
 interface SubmitPayload {
   playerName: string;
   wave: number;
@@ -82,13 +84,38 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
     return sortLeaderboard(uniqueBestByPlayer(loadLocalLeaderboard())).slice(0, limit);
   }
 
-  const url = `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}?select=id,player_name,wave,score,created_at&order=wave.desc,score.desc,created_at.asc&limit=${limit}`;
-  const res = await fetch(url, { headers: getHeaders() });
-  if (!res.ok) {
-    throw new Error(`Leaderboard fetch failed: ${res.status}`);
+  const pageSize = Math.max(limit * 6, 50);
+  const maxPages = 4;
+  let offset = 0;
+  let rows: WaveLeaderboardEntry[] = [];
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const url =
+      `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}` +
+      `?select=id,player_name,wave,score,created_at` +
+      `&order=wave.desc,score.desc,created_at.asc` +
+      `&limit=${pageSize}&offset=${offset}`;
+
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) {
+      throw new Error(`Leaderboard fetch failed: ${res.status}`);
+    }
+
+    const chunk = await res.json();
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    rows = rows.concat(chunk);
+
+    const uniqueCount = uniqueBestByPlayer(rows).length;
+    if (uniqueCount >= limit || chunk.length < pageSize) break;
+
+    offset += pageSize;
   }
-  const rows = await res.json();
+
   return sortLeaderboard(uniqueBestByPlayer(rows)).slice(0, limit);
+}
+
+export function getLeaderboardMode(): LeaderboardMode {
+  return hasConfig ? 'global' : 'local';
 }
 
 export async function submitWaveResult({ playerName, wave, score }: SubmitPayload): Promise<void> {
