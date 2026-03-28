@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GameState } from './types';
 import Hub from './components/Hub';
 import GameEngine from './GameEngine';
-import { fetchWaveLeaderboard, submitWaveResult, type WaveLeaderboardEntry } from './lib/leaderboardClient';
+import { fetchWaveLeaderboard, getLeaderboardMode, submitWaveResult, type WaveLeaderboardEntry } from './lib/leaderboardClient';
  
 // ─── Helpers ──────────────────────────────────────────────────
 const MEDAL: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
@@ -299,7 +299,7 @@ const App = () => {
   const [lastRunStats,     setLastRunStats]     = useState<any>(null);
   const [playerName,       setPlayerName]       = useState(() => initialStoredName || '');
   const [leaderboard,      setLeaderboard]      = useState<WaveLeaderboardEntry[]>([]);
-  const [lbStatus,         setLbStatus]         = useState<'idle' | 'loading' | 'error'>('idle');
+  const [lbStatus,         setLbStatus]         = useState<'idle' | 'loading' | 'error' | 'local'>('idle');
   const [isNamePromptOpen, setIsNamePromptOpen] = useState(() => !initialStoredName);
  
   const runKey = useRef(0);
@@ -315,7 +315,7 @@ const App = () => {
     try {
       const rows = await fetchWaveLeaderboard(10);
       setLeaderboard(rows);
-      setLbStatus('idle');
+      setLbStatus(getLeaderboardMode() === 'local' ? 'local' : 'idle');
     } catch (e) {
       if ((import.meta as any).env?.DEV) console.warn('[leaderboard] failed to fetch rows', e);
       setLbStatus('error');
