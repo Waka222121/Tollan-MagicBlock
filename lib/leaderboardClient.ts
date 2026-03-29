@@ -192,7 +192,4 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
     const body = await res.text().catch(() => '');
     throw new Error(`Leaderboard submit failed: ${res.status} ${body}`);
   }
-}{
-    throw new Error(`Leaderboard submit failed: ${res.status}`);
-  }
 }
