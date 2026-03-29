@@ -99,11 +99,10 @@ function sorted(rows: WaveLeaderboardEntry[]) {
 
 function toEntry(r: any, i: number): WaveLeaderboardEntry {
   return {
-    id:          String(r.id ?? `${i}_${r.player_name}`),
-    player_name: String(r.player_name || 'YOU'),
-    wave:        Math.max(1, Number(r.wave)  || 1),
-    score:       Math.max(0, Number(r.score) || 0),
-    created_at:  String(r.created_at || new Date().toISOString()),
+    apikey: SUPABASE_ANON_KEY!,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY!}`,
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache',
   };
 }
 
@@ -131,16 +130,35 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
     return sorted(dedup(loadLocal())).slice(0, limit);
   }
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    console.warn(`[lb] GET ${res.status}:`, body);
-    throw new Error(`fetch ${res.status}: ${body}`);
+  const pageSize = Math.max(limit * 6, 50);
+  const maxPages = 4;
+  let offset = 0;
+  let rows: WaveLeaderboardEntry[] = [];
+
+  for (let page = 0; page < maxPages; page += 1) {
+    const url =
+      `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}` +
+      `?select=id,player_name,wave,score,created_at` +
+      `&order=wave.desc,score.desc,created_at.asc` +
+      `&limit=${pageSize}&offset=${offset}` +
+      `&_ts=${Date.now()}`;
+
+    const res = await fetch(url, { headers: getHeaders(), cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`Leaderboard fetch failed: ${res.status}`);
+    }
+
+    const chunk = await res.json();
+    if (!Array.isArray(chunk) || chunk.length === 0) break;
+    rows = rows.concat(chunk);
+
+    const uniqueCount = uniqueBestByPlayer(rows).length;
+    if (uniqueCount >= limit || chunk.length < pageSize) break;
+
+    offset += pageSize;
   }
 
-  const data = await res.json();
-  console.log('[lb] rows:', Array.isArray(data) ? data.length : data);
-  if (!Array.isArray(data) || data.length === 0) return [];
-  return sorted(dedup(data.map(toEntry))).slice(0, limit);
+  return sortLeaderboard(uniqueBestByPlayer(rows)).slice(0, limit);
 }
 
 export function getLeaderboardMode(): LeaderboardMode {
@@ -181,6 +199,16 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
     return;
   }
 
+  const url = `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      ...getHeaders(),
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify(payload),
+  });
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     console.warn(`[lb] POST ${res.status}:`, body);
