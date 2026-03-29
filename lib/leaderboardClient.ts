@@ -14,16 +14,49 @@ interface SubmitPayload {
   score: number;
 }
 
-const SUPABASE_URL       = (import.meta as any).env?.VITE_SUPABASE_URL       as string | undefined;
-const SUPABASE_ANON_KEY  = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY  as string | undefined;
-const LEADERBOARD_TABLE  = ((import.meta as any).env?.VITE_LEADERBOARD_TABLE as string | undefined) || 'leaderboard_waves';
+const SUPABASE_URL      = (import.meta as any).env?.VITE_SUPABASE_URL      as string | undefined;
+const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string | undefined;
+const LEADERBOARD_TABLE = ((import.meta as any).env?.VITE_LEADERBOARD_TABLE as string | undefined) || 'leaderboard_waves';
 
 const hasConfig = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
 const LOCAL_LEADERBOARD_KEY = 'mb_local_leaderboard';
+const FETCH_TIMEOUT_MS = 8000;
 
-// ─── Local fallback ───────────────────────────────────────────
+// ─── fetch with timeout ───────────────────────────────────────
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = FETCH_TIMEOUT_MS): Promise<Response> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
+    fetch(url, options)
+      .then((res) => { clearTimeout(timer); resolve(res); })
+      .catch((err) => { clearTimeout(timer); reject(err); });
+  });
+}
 
+// ─── headers ─────────────────────────────────────────────────
+// Supabase accepts both old JWT keys (eyJ...) and new publishable keys (sb_publishable_...)
+// as the apikey header. Authorization: Bearer is only needed for JWT keys.
+function getReadHeaders(): Record<string, string> {
+  const h: Record<string, string> = {
+    'apikey':        SUPABASE_ANON_KEY!,
+    'Content-Type':  'application/json',
+    'Cache-Control': 'no-cache, no-store',
+  };
+  // JWT keys need Bearer token; publishable keys use apikey header only
+  if (SUPABASE_ANON_KEY?.startsWith('eyJ')) {
+    h['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
+  }
+  return h;
+}
+
+function getWriteHeaders(): Record<string, string> {
+  return {
+    ...getReadHeaders(),
+    'Prefer': 'return=minimal',
+  };
+}
+
+// ─── local storage fallback ───────────────────────────────────
 function loadLocalLeaderboard(): WaveLeaderboardEntry[] {
   if (typeof localStorage === 'undefined') return [];
   try {
@@ -32,26 +65,23 @@ function loadLocalLeaderboard(): WaveLeaderboardEntry[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .filter((row) => row && typeof row.player_name === 'string')
-      .map((row) => ({
-        id:         String(row.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`),
-        player_name: String(row.player_name || 'YOU'),
-        wave:        Math.max(1, Number(row.wave)  || 1),
-        score:       Math.max(0, Number(row.score) || 0),
-        created_at:  String(row.created_at || new Date().toISOString()),
+      .filter((r) => r && typeof r.player_name === 'string')
+      .map((r) => ({
+        id:          String(r.id || `${Date.now()}_${Math.random().toString(16).slice(2)}`),
+        player_name: String(r.player_name || 'YOU'),
+        wave:        Math.max(1, Number(r.wave)  || 1),
+        score:       Math.max(0, Number(r.score) || 0),
+        created_at:  String(r.created_at || new Date().toISOString()),
       }));
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 function saveLocalLeaderboard(rows: WaveLeaderboardEntry[]) {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(LOCAL_LEADERBOARD_KEY, JSON.stringify(rows));
+  try { localStorage.setItem(LOCAL_LEADERBOARD_KEY, JSON.stringify(rows)); } catch { /* quota */ }
 }
 
-// ─── Sorting / dedup helpers ──────────────────────────────────
-
+// ─── sort / dedup ─────────────────────────────────────────────
 function normalizePlayerName(name: string) {
   return String(name || '').trim().toLowerCase();
 }
@@ -63,14 +93,14 @@ function isBetterEntry(next: WaveLeaderboardEntry, prev: WaveLeaderboardEntry) {
 }
 
 function uniqueBestByPlayer(rows: WaveLeaderboardEntry[]) {
-  const bestByName = new Map<string, WaveLeaderboardEntry>();
+  const best = new Map<string, WaveLeaderboardEntry>();
   for (const row of rows) {
     const key = normalizePlayerName(row.player_name);
     if (!key) continue;
-    const prev = bestByName.get(key);
-    if (!prev || isBetterEntry(row, prev)) bestByName.set(key, row);
+    const prev = best.get(key);
+    if (!prev || isBetterEntry(row, prev)) best.set(key, row);
   }
-  return [...bestByName.values()];
+  return [...best.values()];
 }
 
 function sortLeaderboard(rows: WaveLeaderboardEntry[]) {
@@ -79,71 +109,48 @@ function sortLeaderboard(rows: WaveLeaderboardEntry[]) {
   );
 }
 
-// ─── Headers ──────────────────────────────────────────────────
-// FIX: always send Authorization: Bearer — Supabase REST API requires it
-// regardless of key format (jwt OR sb_publishable_).
-
-function getHeaders(): Record<string, string> {
-  return {
-    'apikey':        SUPABASE_ANON_KEY!,
-    'Authorization': `Bearer ${SUPABASE_ANON_KEY!}`,
-    'Content-Type':  'application/json',
-    'Cache-Control': 'no-cache',
-  };
-}
-
-// ─── Fetch leaderboard ────────────────────────────────────────
+// ─── public API ───────────────────────────────────────────────
 
 export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEntry[]> {
   if (!hasConfig) {
+    console.warn('[leaderboard] No Supabase config — using local storage');
     return sortLeaderboard(uniqueBestByPlayer(loadLocalLeaderboard())).slice(0, limit);
   }
 
-  const pageSize = Math.max(limit * 6, 50);
-  const maxPages = 4;
-  let offset = 0;
-  let rows: WaveLeaderboardEntry[] = [];
+  const url =
+    `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}` +
+    `?select=id,player_name,wave,score,created_at` +
+    `&order=wave.desc,score.desc,created_at.asc` +
+    `&limit=200` +
+    `&_ts=${Date.now()}`;
 
-  for (let page = 0; page < maxPages; page += 1) {
-    const url =
-      `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}` +
-      `?select=id,player_name,wave,score,created_at` +
-      `&order=wave.desc,score.desc,created_at.asc` +
-      `&limit=${pageSize}&offset=${offset}` +
-      `&_ts=${Date.now()}`;
+  console.log('[leaderboard] fetching from', SUPABASE_URL);
 
-    let res: Response;
-    try {
-      res = await fetch(url, { headers: getHeaders(), cache: 'no-store' });
-    } catch (networkErr) {
-      // true network failure → fall back to local
-      console.warn('[leaderboard] network error, using local fallback', networkErr);
-      return sortLeaderboard(uniqueBestByPlayer(loadLocalLeaderboard())).slice(0, limit);
-    }
-
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`Leaderboard fetch failed: ${res.status} ${body}`);
-    }
-
-    const chunk = await res.json();
-    if (!Array.isArray(chunk) || chunk.length === 0) break;
-    rows = rows.concat(chunk);
-
-    const uniqueCount = uniqueBestByPlayer(rows).length;
-    if (uniqueCount >= limit || chunk.length < pageSize) break;
-
-    offset += pageSize;
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url, { headers: getReadHeaders(), cache: 'no-store' });
+  } catch (err) {
+    console.warn('[leaderboard] fetch error (network/timeout):', err);
+    return sortLeaderboard(uniqueBestByPlayer(loadLocalLeaderboard())).slice(0, limit);
   }
 
-  return sortLeaderboard(uniqueBestByPlayer(rows)).slice(0, limit);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.warn(`[leaderboard] fetch failed: HTTP ${res.status}`, body);
+    throw new Error(`Leaderboard fetch failed: ${res.status} — ${body}`);
+  }
+
+  const data = await res.json();
+  console.log('[leaderboard] fetched rows:', data?.length ?? 0);
+
+  if (!Array.isArray(data) || data.length === 0) return [];
+
+  return sortLeaderboard(uniqueBestByPlayer(data as WaveLeaderboardEntry[])).slice(0, limit);
 }
 
 export function getLeaderboardMode(): LeaderboardMode {
   return hasConfig ? 'global' : 'local';
 }
-
-// ─── Submit score ─────────────────────────────────────────────
 
 export async function submitWaveResult({ playerName, wave, score }: SubmitPayload): Promise<void> {
   const payload = {
@@ -153,18 +160,17 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
   };
 
   if (!hasConfig) {
-    // Local fallback: keep only best result per player
     const rows = loadLocalLeaderboard();
     const now  = new Date().toISOString();
     const incoming: WaveLeaderboardEntry = {
-      id:         `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+      id:          `${Date.now()}_${Math.random().toString(16).slice(2)}`,
       player_name: payload.player_name,
       wave:        payload.wave,
       score:       payload.score,
       created_at:  now,
     };
     const key = normalizePlayerName(payload.player_name);
-    const idx = rows.findIndex((row) => normalizePlayerName(row.player_name) === key);
+    const idx = rows.findIndex((r) => normalizePlayerName(r.player_name) === key);
     if (idx >= 0) {
       if (isBetterEntry(incoming, rows[idx])) rows[idx] = { ...rows[idx], ...incoming };
     } else {
@@ -177,19 +183,22 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
   const url = `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}`;
   let res: Response;
   try {
-    res = await fetch(url, {
-      method: 'POST',
-      cache:  'no-store',
-      headers: { ...getHeaders(), Prefer: 'return=minimal' },
-      body:   JSON.stringify(payload),
+    res = await fetchWithTimeout(url, {
+      method:  'POST',
+      cache:   'no-store',
+      headers: getWriteHeaders(),
+      body:    JSON.stringify(payload),
     });
-  } catch (networkErr) {
-    console.warn('[leaderboard] submit network error', networkErr);
+  } catch (err) {
+    console.warn('[leaderboard] submit network error:', err);
     return;
   }
 
   if (!res.ok) {
     const body = await res.text().catch(() => '');
-    throw new Error(`Leaderboard submit failed: ${res.status} ${body}`);
+    console.warn(`[leaderboard] submit failed: HTTP ${res.status}`, body);
+    throw new Error(`Leaderboard submit failed: ${res.status} — ${body}`);
   }
+
+  console.log('[leaderboard] submitted:', payload);
 }
