@@ -1,5 +1,5 @@
 export interface WaveLeaderboardEntry {
-  id: string;
+  id?: string;
   player_name: string;
   wave: number;
   score: number;
@@ -119,7 +119,7 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
 
   const url =
     `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}` +
-    `?select=id,player_name,wave,score,created_at` +
+    `?select=player_name,wave,score,created_at` +
     `&order=wave.desc,score.desc,created_at.asc` +
     `&limit=200` +
     `&_ts=${Date.now()}`;
@@ -145,7 +145,14 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
 
   if (!Array.isArray(data) || data.length === 0) return [];
 
-  return sortLeaderboard(uniqueBestByPlayer(data as WaveLeaderboardEntry[])).slice(0, limit);
+  const normalized: WaveLeaderboardEntry[] = (data as any[]).map((r, i) => ({
+    id:          String(r.id ?? `${i}_${r.player_name}_${r.created_at}`),
+    player_name: String(r.player_name || 'YOU'),
+    wave:        Math.max(1, Number(r.wave)  || 1),
+    score:       Math.max(0, Number(r.score) || 0),
+    created_at:  String(r.created_at || new Date().toISOString()),
+  }));
+  return sortLeaderboard(uniqueBestByPlayer(normalized)).slice(0, limit);
 }
 
 export function getLeaderboardMode(): LeaderboardMode {
