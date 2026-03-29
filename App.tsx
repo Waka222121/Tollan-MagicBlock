@@ -333,6 +333,8 @@ const App = () => {
       .then(refreshLeaderboard)
       .catch((e) => {
         if ((import.meta as any).env?.DEV) console.warn('[leaderboard] failed to submit row', e);
+        setLbStatus('error');
+        refreshLeaderboard();
       });
   }, [playerName, refreshLeaderboard]);
  
