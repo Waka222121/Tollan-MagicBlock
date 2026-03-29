@@ -217,6 +217,3 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
   console.log('[leaderboard] submitted:', payload);
 }
  
-
-  console.log('[leaderboard] submitted:', payload);
-}
