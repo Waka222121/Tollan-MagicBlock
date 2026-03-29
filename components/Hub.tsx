@@ -190,7 +190,11 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
               </div>
               {leaderboardStatus !== 'idle' && (
                 <div className="font-mono" style={{marginTop:'10px', fontSize:'9px', color: leaderboardStatus === 'loading' ? '#c084fc' : '#a78bfa', letterSpacing:'0.12em'}}>
-                  {leaderboardStatus === 'loading' ? 'SYNCING_LEADERBOARD...' : 'NETWORK_UNAVAILABLE_USING_LOCAL_FALLBACK'}
+                  {leaderboardStatus === 'loading'
+                    ? 'SYNCING_LEADERBOARD...'
+                    : leaderboardStatus === 'local'
+                      ? 'LOCAL_LEADERBOARD_ONLY_CONFIGURE_SUPABASE_FOR_GLOBAL_RANKING'
+                      : 'NETWORK_UNAVAILABLE_USING_LOCAL_FALLBACK'}
                 </div>
               )}
             </div>
