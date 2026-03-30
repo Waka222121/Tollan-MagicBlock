@@ -145,7 +145,8 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
 
     const res = await fetch(url, { headers: getHeaders(), cache: 'no-store' });
     if (!res.ok) {
-      throw new Error(`Leaderboard fetch failed: ${res.status}`);
+      const details = await res.text().catch(() => '');
+      throw new Error(`Leaderboard fetch failed: ${res.status}${details ? ` ${details}` : ''}`);
     }
 
     const chunk = await res.json();
@@ -209,7 +210,8 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
     body: JSON.stringify(payload),
   });
   if (!submitResponse.ok) {
-    throw new Error(`Leaderboard submit failed: ${submitResponse.status}`);
+    const details = await submitResponse.text().catch(() => '');
+    throw new Error(`Leaderboard submit failed: ${submitResponse.status}${details ? ` ${details}` : ''}`);
   }
   console.log('[lb] submitted:', payload);
 }

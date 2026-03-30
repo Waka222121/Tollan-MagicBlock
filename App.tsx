@@ -317,7 +317,7 @@ const App = () => {
       setLeaderboard(rows);
       setLbStatus(getLeaderboardMode() === 'local' ? 'local' : 'idle');
     } catch (e) {
-      if ((import.meta as any).env?.DEV) console.warn('[leaderboard] failed to fetch rows', e);
+      console.warn('[leaderboard] failed to fetch rows', e);
       setLbStatus('error');
     }
   }, []);
@@ -332,6 +332,7 @@ const App = () => {
     submitWaveResult({ playerName, wave: stats.wave || 1, score: stats.score || 0 })
       .then(refreshLeaderboard)
       .catch((e) => {
+        console.warn('[leaderboard] failed to submit row', e);
         if ((import.meta as any).env?.DEV) console.warn('[leaderboard] failed to submit row', e);
         setLbStatus('error');
         refreshLeaderboard();
