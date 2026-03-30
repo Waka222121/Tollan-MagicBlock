@@ -119,7 +119,8 @@ npm run build
 - `game/` — игровая логика.
 - `components/Hub.tsx` — главное меню.
 - `components/GameUI.tsx` — HUD/пауза/level-up/gameover UI.
-- `lib/leaderboardClient.ts` — клиент leaderboard (Supabase + local fallback).
+- `lib/leaderboardService.ts` — API-клиент leaderboard (Supabase REST).
+- `hooks/useLeaderboard.ts` — состояние/refresh/submit leaderboard.
 
 ---
 
