@@ -316,7 +316,7 @@ const App = () => {
     setTotalKills(prev => prev + stats.kills);
     setBestWave(prev => Math.max(prev, stats.wave || 1));
     setLastRunStats(stats);
-    setGameState(GameState.GAMEOVER);
+    setGameState(GameState.MENU);
  
     submitResult(playerName, stats.wave || 1, stats.score || 0)
       .then(refreshLeaderboard)
