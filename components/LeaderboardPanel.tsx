@@ -11,10 +11,8 @@ interface LeaderboardPanelProps {
 
 const LeaderboardPanel = ({ playerName, rows, status, errorText, onRefresh }: LeaderboardPanelProps) => {
   const top5 = rows.slice(0, 5);
-  const filled: Array<WaveLeaderboardEntry | null> = [...top5];
-  while (filled.length < 5) filled.push(null);
-
-  const normalizedPlayerName = (playerName || '').trim().toUpperCase();
+  const filled = [...top5];
+  while (filled.length < 5) filled.push(null as any);
 
   return (
     <>
@@ -48,9 +46,9 @@ const LeaderboardPanel = ({ playerName, rows, status, errorText, onRefresh }: Le
               gridTemplateColumns:'28px 1fr 80px 86px',
               gap:'10px',
               alignItems:'center',
-              color: (entry?.player_name || '').trim().toUpperCase() === normalizedPlayerName ? '#ffffff' : '#ddd6fe',
-              background: (entry?.player_name || '').trim().toUpperCase() === normalizedPlayerName ? 'linear-gradient(90deg, rgba(168,85,247,0.35), rgba(168,85,247,0.1))' : 'rgba(13,7,31,0.28)',
-              border: (entry?.player_name || '').trim().toUpperCase() === normalizedPlayerName ? '1px solid rgba(216,180,254,0.95)' : '1px solid rgba(167,139,250,0.32)',
+              color: entry?.player_name === playerName ? '#ffffff' : '#ddd6fe',
+              background: entry?.player_name === playerName ? 'linear-gradient(90deg, rgba(168,85,247,0.35), rgba(168,85,247,0.1))' : 'rgba(13,7,31,0.28)',
+              border: entry?.player_name === playerName ? '1px solid rgba(216,180,254,0.95)' : '1px solid rgba(167,139,250,0.32)',
               padding:'6px 10px'
             }}>
             <span style={{color: '#c084fc', fontWeight:700}}>#{i + 1}</span>

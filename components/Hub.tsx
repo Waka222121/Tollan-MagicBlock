@@ -44,7 +44,7 @@ const Hub = ({ onStart, highScore, totalKills, bestWave = 1, playerName = 'YOU',
           style={{
             position:'absolute',
             inset:0,
-            backgroundImage:`url(${menuBackgroundUrl})`,
+            backgroundImage:`url(${MENU_BG_CANDIDATES[0]})`,
             backgroundSize:'cover',
             backgroundPosition:'center',
             backgroundRepeat:'no-repeat',
