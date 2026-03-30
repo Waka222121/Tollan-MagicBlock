@@ -5,6 +5,8 @@ import {
   type WaveLeaderboardEntry,
 } from './leaderboardService';
 
+export type LeaderboardMode = 'global' | 'local';
+
 interface SubmitPayload {
   playerName: string;
   wave: number;
@@ -66,6 +68,10 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
   return sortRows(bestByPlayer(remoteRows)).slice(0, limit);
 }
 
+export function getLeaderboardMode(): LeaderboardMode {
+  return hasConfig ? 'global' : 'local';
+}
+
 export async function submitWaveResult({ playerName, wave, score }: SubmitPayload): Promise<void> {
   if (!isLeaderboardConfigured()) {
     const localRows = readLocalRows();
@@ -76,6 +82,13 @@ export async function submitWaveResult({ playerName, wave, score }: SubmitPayloa
       score: Math.max(0, Math.floor(score || 0)),
       created_at: new Date().toISOString(),
     };
+    const key = norm(payload.player_name);
+    const idx = rows.findIndex(r => norm(r.player_name) === key);
+    if (idx >= 0) { if (isBetter(entry, rows[idx])) rows[idx] = { ...rows[idx], ...entry }; }
+    else rows.push(entry);
+    saveLocal(sorted(dedup(rows)).slice(0, 64));
+    return;
+  }
 
     const key = normalizeName(incoming.player_name);
     const idx = localRows.findIndex((r) => normalizeName(r.player_name) === key);
