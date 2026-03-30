@@ -333,7 +333,6 @@ const App = () => {
       .then(refreshLeaderboard)
       .catch((e) => {
         console.warn('[leaderboard] failed to submit row', e);
-        if ((import.meta as any).env?.DEV) console.warn('[leaderboard] failed to submit row', e);
         setLbStatus('error');
         refreshLeaderboard();
       });

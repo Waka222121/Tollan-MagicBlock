@@ -97,13 +97,21 @@ function sorted(rows: WaveLeaderboardEntry[]) {
   );
 }
 
+function getHeaders() {
+  const headers: Record<string, string> = {
 function toEntry(r: any, i: number): WaveLeaderboardEntry {
   return {
     apikey: SUPABASE_ANON_KEY!,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY!}`,
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache',
   };
+  // Legacy anon keys are JWT-shaped and can be used as Bearer tokens.
+  // New publishable keys (`sb_publishable_...`) are not JWTs and should not
+  // be sent as Authorization Bearer values.
+  if (SUPABASE_ANON_KEY?.includes('.')) {
+    headers.Authorization = `Bearer ${SUPABASE_ANON_KEY!}`;
+  }
+  return headers;
 }
 
 // ─── public API ───────────────────────────────────────────────
