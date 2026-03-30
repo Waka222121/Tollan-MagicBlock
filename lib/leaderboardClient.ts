@@ -5,8 +5,6 @@ import {
   type WaveLeaderboardEntry,
 } from './leaderboardService';
 
-export type LeaderboardMode = 'global' | 'local';
-
 interface SubmitPayload {
   playerName: string;
   wave: number;
@@ -66,10 +64,6 @@ export async function fetchWaveLeaderboard(limit = 8): Promise<WaveLeaderboardEn
 
   const remoteRows = await fetchLeaderboardRows(200);
   return sortRows(bestByPlayer(remoteRows)).slice(0, limit);
-}
-
-export function getLeaderboardMode(): LeaderboardMode {
-  return hasConfig ? 'global' : 'local';
 }
 
 export async function submitWaveResult({ playerName, wave, score }: SubmitPayload): Promise<void> {
