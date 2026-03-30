@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { GameState } from './types';
 import Hub from './components/Hub';
 import GameEngine from './GameEngine';
-import { fetchWaveLeaderboard, submitWaveResult, type WaveLeaderboardEntry } from './lib/leaderboardClient';
+import type { WaveLeaderboardEntry } from './lib/leaderboardService';
+import { useLeaderboard } from './hooks/useLeaderboard';
  
 // ─── Helpers ──────────────────────────────────────────────────
 const MEDAL: Record<number, string> = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
@@ -298,9 +299,9 @@ const App = () => {
   const [bestWave,         setBestWave]         = useState(1);
   const [lastRunStats,     setLastRunStats]     = useState<any>(null);
   const [playerName,       setPlayerName]       = useState(() => initialStoredName || '');
-  const [leaderboard,      setLeaderboard]      = useState<WaveLeaderboardEntry[]>([]);
-  const [lbStatus,         setLbStatus]         = useState<'idle' | 'loading' | 'error'>('idle');
   const [isNamePromptOpen, setIsNamePromptOpen] = useState(() => !initialStoredName);
+
+  const { rows: leaderboard, status: lbStatus, refresh: refreshLeaderboard, submitResult } = useLeaderboard(gameState === GameState.MENU, 5);
  
   const runKey = useRef(0);
  
@@ -310,31 +311,20 @@ const App = () => {
     setGameState(GameState.PLAYING);
   }, []);
  
-  const refreshLeaderboard = useCallback(async () => {
-    setLbStatus('loading');
-    try {
-      const rows = await fetchWaveLeaderboard(10);
-      setLeaderboard(rows);
-      setLbStatus('idle');
-    } catch (e) {
-      if ((import.meta as any).env?.DEV) console.warn('[leaderboard] failed to fetch rows', e);
-      setLbStatus('error');
-    }
-  }, []);
- 
   const handleGameOver = useCallback((stats: any) => {
     setHighScore(prev => Math.max(prev, stats.score));
     setTotalKills(prev => prev + stats.kills);
     setBestWave(prev => Math.max(prev, stats.wave || 1));
     setLastRunStats(stats);
-    setGameState(GameState.GAMEOVER);
+    setGameState(GameState.MENU);
  
-    submitWaveResult({ playerName, wave: stats.wave || 1, score: stats.score || 0 })
+    submitResult(playerName, stats.wave || 1, stats.score || 0)
       .then(refreshLeaderboard)
       .catch((e) => {
-        if ((import.meta as any).env?.DEV) console.warn('[leaderboard] failed to submit row', e);
+        console.warn('[leaderboard] failed to submit row', e);
+        refreshLeaderboard();
       });
-  }, [playerName, refreshLeaderboard]);
+  }, [playerName, refreshLeaderboard, submitResult]);
  
   const handlePlayerNameChange = useCallback((name: string) => {
     const next = name.trim().slice(0, 18) || 'YOU';
@@ -350,8 +340,6 @@ const App = () => {
     gameState === GameState.LEVEL_UP ||
     gameState === GameState.GAMEOVER ||
     gameState === GameState.PAUSED;
- 
-  useEffect(() => { refreshLeaderboard(); }, [refreshLeaderboard]);
  
   return (
     <div className="w-full h-screen relative overflow-hidden select-none">
@@ -380,18 +368,6 @@ const App = () => {
           onExit={backToMenu}
           onRetry={startGame}
           lastRunStats={lastRunStats}
-        />
-      )}
- 
-      {gameState === GameState.GAMEOVER && (
-        <GameOverOverlay
-          playerName={playerName}
-          lastRunStats={lastRunStats}
-          leaderboard={leaderboard}
-          lbStatus={lbStatus}
-          onPlayAgain={startGame}
-          onMainMenu={backToMenu}
-          onRefresh={refreshLeaderboard}
         />
       )}
  
