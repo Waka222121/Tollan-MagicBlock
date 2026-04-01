@@ -46,7 +46,7 @@ export async function fetchLeaderboardRows(limit = 200): Promise<WaveLeaderboard
   const url =
     `${SUPABASE_URL}/rest/v1/${LEADERBOARD_TABLE}` +
     `?select=id,player_name,wave,score,created_at` +
-    `&order=wave.desc,score.desc,created_at.asc` +
+    `&order=wave.desc&order=score.desc&order=created_at.asc` +
     `&limit=${limit}` +
     `&_ts=${Date.now()}`;
 
