@@ -53,7 +53,7 @@ const LeaderboardPanel = ({ playerName, rows, status, errorText, onRefresh }: Le
             }}>
             <span style={{color: '#c084fc', fontWeight:700}}>#{i + 1}</span>
             <span>{entry ? String(entry.player_name || '').toUpperCase().replace(/\s+/g, '_') : '—'}</span>
-            <span style={{color:'#fff', fontWeight:700, letterSpacing:'0.12em', textAlign:'right'}}>{entry ? `W${entry.wave}` : '—'}</span>
+            <span style={{color:'#fff', fontWeight:700, letterSpacing:'0.12em', textAlign:'right'}}>{entry ? `${entry.wave}` : '—'}</span>
             <span style={{color:'#fff', fontWeight:700, letterSpacing:'0.12em', textAlign:'right'}}>{entry ? Number(entry.score || 0).toLocaleString() : '—'}</span>
           </div>
         ))}
