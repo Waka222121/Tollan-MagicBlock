@@ -54,20 +54,41 @@ const Hub = ({
       {showModal && (
         <div style={{
           position:'fixed', inset:0, zIndex:100,
-          background:'rgba(0,0,0,0.85)',
+          background:'rgba(0,0,0,0.88)',
           display:'flex', alignItems:'center', justifyContent:'center'
         }}>
           <div style={{
             background:'linear-gradient(180deg, rgba(28,8,52,0.98), rgba(11,5,24,1))',
             border:'1px solid rgba(192,132,252,0.5)',
-            boxShadow:'0 0 40px rgba(139,92,246,0.4)',
-            borderRadius:'14px', padding:'36px 40px',
-            display:'flex', flexDirection:'column', alignItems:'center', gap:'20px',
-            minWidth:'320px'
+            boxShadow:'0 0 60px rgba(139,92,246,0.4), 0 20px 60px rgba(0,0,0,0.7)',
+            borderRadius:'14px', padding:'44px 48px',
+            display:'flex', flexDirection:'column', alignItems:'center', gap:'24px',
+            minWidth:'360px'
           }}>
-            <span className="font-mono" style={{fontSize:'13px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.4em',fontWeight:700}}>
-              Enter your nickname
+            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'4px'}}>
+              <span className="font-pirata" style={{
+                fontSize:'42px', color:'#fff', letterSpacing:'0.05em',
+                textTransform:'uppercase', lineHeight:1,
+                textShadow:'0 4px 16px rgba(139,92,246,0.6)'
+              }}>
+                TOLLAN
+              </span>
+              <span className="font-pirata" style={{
+                fontSize:'20px', letterSpacing:'0.08em', textTransform:'uppercase',
+                background:'linear-gradient(to right, #9b59b6, #c4b5fd)',
+                WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text'
+              }}>
+                MagicBlock
+              </span>
+            </div>
+
+            <span className="font-mono" style={{
+              fontSize:'11px', color:'#c4b5fd', textTransform:'uppercase',
+              letterSpacing:'0.4em', fontWeight:700
+            }}>
+              ENTER YOUR NICKNAME
             </span>
+
             <input
               autoFocus
               maxLength={18}
@@ -79,23 +100,24 @@ const Hub = ({
               style={{
                 background:'rgba(109,40,217,0.15)',
                 border:'1px solid rgba(196,181,253,0.5)',
-                color:'#fff', fontSize:'16px', letterSpacing:'0.2em',
-                padding:'10px 16px', borderRadius:'6px', outline:'none',
+                color:'#fff', fontSize:'15px', letterSpacing:'0.25em',
+                padding:'11px 16px', borderRadius:'6px', outline:'none',
                 width:'100%', textAlign:'center', textTransform:'uppercase'
               }}
             />
             <button
               onClick={handleSaveName}
-              className="font-mono"
+              className="font-mono btn-stone"
               style={{
-                padding:'10px 32px', background:'rgba(109,40,217,0.4)',
+                padding:'12px 32px', background:'rgba(109,40,217,0.35)',
                 border:'1px solid rgba(196,181,253,0.75)',
                 color:'#f5d0fe', fontSize:'13px', textTransform:'uppercase',
                 letterSpacing:'0.15em', cursor:'pointer', fontWeight:700,
-                borderRadius:'6px', width:'100%'
+                width:'100%', position:'relative', overflow:'hidden'
               }}
             >
-              SAVE AND CONTINUE
+              <div className="metal-shine"/>
+              <span style={{position:'relative',zIndex:1}}>SAVE AND CONTINUE</span>
             </button>
           </div>
         </div>
