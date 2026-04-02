@@ -30,7 +30,6 @@ const Hub = ({
 }: HubProps) => {
   const rows = leaderboard.slice(0, 5);
 
-  // Показываем модалку если имя не задано
   const [showModal, setShowModal] = useState(!playerName);
   const [inputName, setInputName] = useState('');
 
@@ -50,45 +49,23 @@ const Hub = ({
       height:'100vh', overflow:'hidden', color:'#fff',
       userSelect:'none', pointerEvents:'auto', background:'#000000'
     }}>
-      {/* Nickname modal */}
       {showModal && (
         <div style={{
           position:'fixed', inset:0, zIndex:100,
-          background:'rgba(0,0,0,0.88)',
+          background:'rgba(0,0,0,0.85)',
           display:'flex', alignItems:'center', justifyContent:'center'
         }}>
           <div style={{
             background:'linear-gradient(180deg, rgba(28,8,52,0.98), rgba(11,5,24,1))',
             border:'1px solid rgba(192,132,252,0.5)',
-            boxShadow:'0 0 60px rgba(139,92,246,0.4), 0 20px 60px rgba(0,0,0,0.7)',
-            borderRadius:'14px', padding:'44px 48px',
-            display:'flex', flexDirection:'column', alignItems:'center', gap:'24px',
-            minWidth:'360px'
+            boxShadow:'0 0 40px rgba(139,92,246,0.4)',
+            borderRadius:'14px', padding:'36px 40px',
+            display:'flex', flexDirection:'column', alignItems:'center', gap:'20px',
+            minWidth:'320px'
           }}>
-            <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'4px'}}>
-              <span className="font-pirata" style={{
-                fontSize:'42px', color:'#fff', letterSpacing:'0.05em',
-                textTransform:'uppercase', lineHeight:1,
-                textShadow:'0 4px 16px rgba(139,92,246,0.6)'
-              }}>
-                TOLLAN
-              </span>
-              <span className="font-pirata" style={{
-                fontSize:'20px', letterSpacing:'0.08em', textTransform:'uppercase',
-                background:'linear-gradient(to right, #9b59b6, #c4b5fd)',
-                WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text'
-              }}>
-                MagicBlock
-              </span>
-            </div>
-
-            <span className="font-mono" style={{
-              fontSize:'11px', color:'#c4b5fd', textTransform:'uppercase',
-              letterSpacing:'0.4em', fontWeight:700
-            }}>
-              ENTER YOUR NICKNAME
+            <span className="font-mono" style={{fontSize:'13px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.4em',fontWeight:700}}>
+              Enter your nickname
             </span>
-
             <input
               autoFocus
               maxLength={18}
@@ -100,30 +77,28 @@ const Hub = ({
               style={{
                 background:'rgba(109,40,217,0.15)',
                 border:'1px solid rgba(196,181,253,0.5)',
-                color:'#fff', fontSize:'15px', letterSpacing:'0.25em',
-                padding:'11px 16px', borderRadius:'6px', outline:'none',
+                color:'#fff', fontSize:'16px', letterSpacing:'0.2em',
+                padding:'10px 16px', borderRadius:'6px', outline:'none',
                 width:'100%', textAlign:'center', textTransform:'uppercase'
               }}
             />
             <button
               onClick={handleSaveName}
-              className="font-mono btn-stone"
+              className="font-mono"
               style={{
-                padding:'12px 32px', background:'rgba(109,40,217,0.35)',
+                padding:'10px 32px', background:'rgba(109,40,217,0.4)',
                 border:'1px solid rgba(196,181,253,0.75)',
                 color:'#f5d0fe', fontSize:'13px', textTransform:'uppercase',
                 letterSpacing:'0.15em', cursor:'pointer', fontWeight:700,
-                width:'100%', position:'relative', overflow:'hidden'
+                borderRadius:'6px', width:'100%'
               }}
             >
-              <div className="metal-shine"/>
-              <span style={{position:'relative',zIndex:1}}>SAVE AND CONTINUE</span>
+              SAVE AND CONTINUE
             </button>
           </div>
         </div>
       )}
 
-      {/* Background */}
       <div style={{position:'absolute',inset:0,pointerEvents:'none'}}>
         <div style={{
           position:'absolute', inset:0,
@@ -143,8 +118,6 @@ const Hub = ({
         height:'100%', width:'100%', maxWidth:'1280px', margin:'0 auto',
         padding:'24px 44px 18px'
       }}>
-
-        {/* HEADER */}
         <header style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'18px',flexShrink:0}}>
           <div style={{display:'flex',alignItems:'center',gap:'18px'}}>
             <img src="/assets/MagicBlock-Logomark-White.png" alt="MagicBlock"
@@ -165,10 +138,7 @@ const Hub = ({
           </div>
         </header>
 
-        {/* MAIN */}
         <main style={{flex:1,display:'grid',gridTemplateColumns:'6fr 6fr',gap:'32px',alignItems:'center',minHeight:0}}>
-
-          {/* LEFT */}
           <div style={{display:'flex',flexDirection:'column',justifyContent:'center'}}>
             <h1 className="font-pirata" style={{
               fontSize:'clamp(6rem, 11vw, 10rem)', lineHeight:0.82,
@@ -197,7 +167,6 @@ const Hub = ({
             </button>
           </div>
 
-          {/* RIGHT — leaderboard panel */}
           <div style={{
             display:'grid', gridTemplateColumns:'1fr',
             background:'linear-gradient(180deg, rgba(28,8,52,0.92), rgba(11,5,24,0.98))',
@@ -242,7 +211,6 @@ const Hub = ({
           </div>
         </main>
 
-        {/* FOOTER */}
         <footer style={{flexShrink:0,marginTop:'12px',paddingTop:'10px',borderTop:'1px solid rgba(255,255,255,0.08)',display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
           <div style={{display:'flex',flexDirection:'column',gap:'6px'}}>
             <span className="font-mono" style={{fontSize:'9px',color:'#475569',letterSpacing:'0.3em',textTransform:'uppercase',fontWeight:700}}>
