@@ -9,6 +9,7 @@ interface HubProps {
   totalKills?: number;
   bestWave?: number;
   playerName?: string;
+  onPlayerNameChange?: (name: string) => void;
   leaderboard?: LeaderboardEntry[];
   leaderboardStatus?: 'idle' | 'loading' | 'error' | 'local';
   onRefreshLeaderboard?: () => void;
@@ -20,7 +21,8 @@ const Hub = ({
   highScore = 0,
   totalKills = 0,
   bestWave = 1,
-  playerName = 'YOU',
+  playerName = '',
+  onPlayerNameChange,
   leaderboard = [],
   leaderboardStatus = 'idle',
   onRefreshLeaderboard,
@@ -28,12 +30,77 @@ const Hub = ({
 }: HubProps) => {
   const rows = leaderboard.slice(0, 5);
 
+  // Показываем модалку если имя не задано
+  const [showModal, setShowModal] = useState(!playerName);
+  const [inputName, setInputName] = useState('');
+
+  const handleSaveName = () => {
+    const clean = inputName.trim().slice(0, 18).toUpperCase() || 'WIZARD';
+    onPlayerNameChange?.(clean);
+    setShowModal(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSaveName();
+  };
+
   return (
     <div style={{
       position:'relative', display:'flex', flexDirection:'column',
       height:'100vh', overflow:'hidden', color:'#fff',
       userSelect:'none', pointerEvents:'auto', background:'#000000'
     }}>
+      {/* Nickname modal */}
+      {showModal && (
+        <div style={{
+          position:'fixed', inset:0, zIndex:100,
+          background:'rgba(0,0,0,0.85)',
+          display:'flex', alignItems:'center', justifyContent:'center'
+        }}>
+          <div style={{
+            background:'linear-gradient(180deg, rgba(28,8,52,0.98), rgba(11,5,24,1))',
+            border:'1px solid rgba(192,132,252,0.5)',
+            boxShadow:'0 0 40px rgba(139,92,246,0.4)',
+            borderRadius:'14px', padding:'36px 40px',
+            display:'flex', flexDirection:'column', alignItems:'center', gap:'20px',
+            minWidth:'320px'
+          }}>
+            <span className="font-mono" style={{fontSize:'13px',color:'#e9d5ff',textTransform:'uppercase',letterSpacing:'0.4em',fontWeight:700}}>
+              Enter your nickname
+            </span>
+            <input
+              autoFocus
+              maxLength={18}
+              value={inputName}
+              onChange={e => setInputName(e.target.value.toUpperCase())}
+              onKeyDown={handleKeyDown}
+              placeholder="YOUR_NICKNAME"
+              className="font-mono"
+              style={{
+                background:'rgba(109,40,217,0.15)',
+                border:'1px solid rgba(196,181,253,0.5)',
+                color:'#fff', fontSize:'16px', letterSpacing:'0.2em',
+                padding:'10px 16px', borderRadius:'6px', outline:'none',
+                width:'100%', textAlign:'center', textTransform:'uppercase'
+              }}
+            />
+            <button
+              onClick={handleSaveName}
+              className="font-mono"
+              style={{
+                padding:'10px 32px', background:'rgba(109,40,217,0.4)',
+                border:'1px solid rgba(196,181,253,0.75)',
+                color:'#f5d0fe', fontSize:'13px', textTransform:'uppercase',
+                letterSpacing:'0.15em', cursor:'pointer', fontWeight:700,
+                borderRadius:'6px', width:'100%'
+              }}
+            >
+              SAVE AND CONTINUE
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Background */}
       <div style={{position:'absolute',inset:0,pointerEvents:'none'}}>
         <div style={{
